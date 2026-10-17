@@ -29,3 +29,12 @@ Local packaging: `packaging/macos/package.sh --arch universal`, `packaging/windo
 Dry run: `gh workflow run release.yml --ref <branch>` builds the unsigned jobs (version, Linux,
 Linux riscv64, Flatpak, FreeBSD, web) on any branch; the signing jobs are refused there by the `release`
 environment's branch rule, so no draft release is made.
+
+## Icons
+
+`assets/app-icon/wordcraft.svg` is the WordLogic app icon ("W trace", Aegean Logic brand artwork
+under `docs/brand/LICENSE-brand.txt`), used from 48 px up; `wordcraft-small.svg` is its simplified
+glyph for 32 px and below. `packaging/icons.sh` regenerates the 1024 px PNG, the macOS 512 px PNG,
+the `.icns` (`cargo xtask icns`), the `.ico` (`cargo xtask ico`) and the hicolor PNGs from them; it
+needs `resvg` and runs on any platform. The outputs are committed, so packaging never needs those
+tools. Every file has a row in `ATTRIBUTION.md` (`cargo xtask assets`).

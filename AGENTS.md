@@ -24,7 +24,7 @@ People trust WordCraft with their writing; a crash loses their work. **This outr
 - **Every asset file has a row in [`ATTRIBUTION.md`](ATTRIBUTION.md)** (author, source, licence). `cargo xtask assets` (part of `cargo xtask ci`) fails otherwise. Add the row in the same commit as the file.
 - Fonts: new font files go to [`storytold/craft-fonts`](https://github.com/storytold/craft-fonts), never this repo; it's an optional build input (`CRAFT_FONTS_DIR`). Documents asking for proprietary fonts (Calibri, Aptos, Cambria…) are rendered with installed system fonts or metric-compatible open substitutes (`crates/fonts/src/word.rs`) — never bundle proprietary fonts.
 - Templates, sample documents and themes are our own text and colours (`crates/engine/src/sample.rs`, `cmd/design.rs`). Demo images are public domain, with sources recorded.
-- The Aegean Logic brand files in `docs/brand/` are Aegean Logic trademarks under `docs/brand/LICENSE-brand.txt`, the one exception.
+- The Aegean Logic brand files in `docs/brand/` and the WordLogic app icon in `assets/app-icon/` (supplied by Aegean Logic; regenerate the outputs with `packaging/icons.sh`) are Aegean Logic trademarks under `docs/brand/LICENSE-brand.txt`, the one exception.
 
 ## Clean room
 - Microsoft Word is installed on the dev machine and may be **observed** black-box: run it, use its UI with synthetic documents, take screenshots **of its window only** (by window id — the machine runs other work; never capture the whole desktop) stored only under `plan/word/screenshots/` (gitignored, never committed).

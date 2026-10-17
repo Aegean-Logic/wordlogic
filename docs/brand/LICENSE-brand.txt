@@ -1,7 +1,9 @@
 Aegean Logic brand assets: license
 
-The Aegean Logic name, wordmark, mark and app icon (the "Aegean Logic Marks"), including every
-file in this directory in every color, size and format, are owned by Aegean Logic. They are
+The Aegean Logic name, wordmark, mark and app icon, and the WordLogic app icon (the "Aegean Logic
+Marks"), including every file in this directory and the WordLogic app icon files in
+assets/app-icon/ (wordcraft.svg, wordcraft-small.svg and every file rendered from them), in every
+color, size and format, are owned by Aegean Logic. They are
 trademarks and are NOT open source. They are not covered by WordLogic's MIT OR Apache-2.0
 license, and nothing in that license, in NOTICE or in any other file of this repository grants
 any right to them.
