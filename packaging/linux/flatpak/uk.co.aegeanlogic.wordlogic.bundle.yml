@@ -9,9 +9,9 @@
 # Wayland, xkbcommon and Vulkan at runtime; the freedesktop runtime has all of them, and the
 # GPU driver comes from its org.freedesktop.Platform.GL extension.
 #
-# ai.storyteller.wordcraft.yml (same directory) is the from-source manifest for Flathub. Keep
+# uk.co.aegeanlogic.wordlogic.yml (same directory) is the from-source manifest for Flathub. Keep
 # runtime, runtime-version, sdk and finish-args identical in both (packaging-lint checks this).
-id: ai.storyteller.wordcraft
+id: uk.co.aegeanlogic.wordlogic
 runtime: org.freedesktop.Platform
 runtime-version: '25.08'
 sdk: org.freedesktop.Sdk
@@ -31,7 +31,7 @@ finish-args:
   - --filesystem=xdg-documents
   - --filesystem=xdg-pictures
   # Deliberately not granted: network (the optional --control server listens on 127.0.0.1 in
-  # the sandbox; `flatpak override --user --share=network ai.storyteller.wordcraft` exposes it to
+  # the sandbox; `flatpak override --user --share=network uk.co.aegeanlogic.wordlogic` exposes it to
   # host agents) and home/host filesystem access.
 modules:
   - name: wordcraft
@@ -39,10 +39,10 @@ modules:
     build-commands:
       - install -Dm755 bin/wordcraft /app/bin/wordcraft
       - install -Dm755 bin/wordcraft-cli /app/bin/wordcraft-cli
-      - install -Dm644 share/applications/ai.storyteller.wordcraft.desktop /app/share/applications/ai.storyteller.wordcraft.desktop
-      - install -Dm644 share/mime/packages/ai.storyteller.wordcraft.xml /app/share/mime/packages/ai.storyteller.wordcraft.xml
+      - install -Dm644 share/applications/uk.co.aegeanlogic.wordlogic.desktop /app/share/applications/uk.co.aegeanlogic.wordlogic.desktop
+      - install -Dm644 share/mime/packages/uk.co.aegeanlogic.wordlogic.xml /app/share/mime/packages/uk.co.aegeanlogic.wordlogic.xml
       # Already has the release's version and date substituted by package.sh.
-      - install -Dm644 share/metainfo/ai.storyteller.wordcraft.metainfo.xml /app/share/metainfo/ai.storyteller.wordcraft.metainfo.xml
+      - install -Dm644 share/metainfo/uk.co.aegeanlogic.wordlogic.metainfo.xml /app/share/metainfo/uk.co.aegeanlogic.wordlogic.metainfo.xml
       # Docs include the licences of the embedded craft-fonts (OFL-*.txt).
       - mkdir -p /app/share/icons /app/share/doc && cp -R share/icons/hicolor /app/share/icons/ && cp -R share/doc/wordcraft /app/share/doc/
     sources:

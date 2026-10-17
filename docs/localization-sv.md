@@ -1,6 +1,6 @@
 # Swedish interface
 
-> **Last reviewed:** 2026-10-13 · **Last updated:** 2026-10-13 · **Change:** minor (Swedish interface catalog and regression checks) · **Target:** WordCraft 0.6.1
+> **Last reviewed:** 2026-10-13 · **Last updated:** 2026-10-13 · **Change:** minor (Swedish interface catalog and regression checks) · **Target:** WordLogic 0.6.1
 
 Choose **File › Options › Interface language › Svenska**, or follow a Swedish system display
 language (`sv-SE`, `sv_SE.UTF-8`, and `sv-FI` for Swedish in Finland). The catalog code is `sv`;
@@ -36,7 +36,7 @@ wording choice, and reviewed the running app.
   where the group gives the context: the button `Framhäv\nfält`, the command `Framhäv kopplingsfält`.
 - Decimal comma in fixed labels (`Radavstånd 1,5`, `8,5" × 11"`), Swedish quotation marks (”…”),
   and a spaced en dash where English has an em dash (`Redigering – redigera dokumentet direkt`).
-- Names stay as they are: WordCraft, Zotero, SmartArt, WordArt, the Craft theme, paper sizes
+- Names stay as they are: WordLogic, Zotero, SmartArt, WordArt, the Craft theme, paper sizes
   (Letter, Legal …) and citation styles (APA, MLA …). Loanwords Swedish speakers use stay too:
   `community`, `commit`.
 

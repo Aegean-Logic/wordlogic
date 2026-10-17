@@ -23,7 +23,7 @@ jobs:
     uses: storytold/craft-common-actions/.github/workflows/release.yml@main
     with:
       app-name: wordcraft
-      app-title: WordCraft
+      app-title: WordLogic
       craft-fonts-ref: 8dcdacd5153e64560d109541a47d806f26f048c0
       version: ${{ inputs.version }}
     secrets:

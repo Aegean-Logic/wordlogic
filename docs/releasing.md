@@ -1,7 +1,7 @@
-# Releasing WordCraft
+# Releasing WordLogic
 
 The canonical recipe is [craftrules `release/playbook.md`](https://github.com/storytold/craftrules/blob/main/release/playbook.md);
-this file has the WordCraft specifics.
+this file has the WordLogic specifics.
 
 1. Bump the version on `main`: `cargo xtask version set 0.2.0` (the one source of truth is
    `[workspace.package] version`; the app shows it in `--version` and About, with the commit from
@@ -10,14 +10,14 @@ this file has the WordCraft specifics.
 
 | Platform | Artifacts | Signing |
 |---|---|---|
-| macOS | universal `WordCraft.app` in a `.dmg`, universal CLI zip | Developer ID + notarization (`APPLE_*` secrets) |
+| macOS | universal `WordLogic.app` in a `.dmg`, universal CLI zip | Developer ID + notarization (`APPLE_*` secrets) |
 | Windows | x64, x86 and arm64 `.msi` + portable `.zip` | Azure Trusted Signing (`AZURE_*` secrets) |
 | Linux | x86_64 and aarch64 `.AppImage` (+ `.zsync` for AppImageUpdate), `.flatpak` bundle, `.deb`, `.rpm`, `.tar.gz`; Flathub manifest | checksums |
 | Linux riscv64 | `.tar.gz` (cross-compiled on `ubuntu-24.04`, glibc >= 2.39; CLI smoke-tested under QEMU) | checksums |
 | FreeBSD | x86_64 `.tar.gz` | checksums |
 | Web | `wordcraft-web-<version>.zip` (static site: `index.html`, wasm, glue) | none |
 
-3. The run drafts a GitHub Release `WordCraft v<version>` with `SHA256SUMS.txt`; review and publish it.
+3. The run drafts a GitHub Release `WordLogic v<version>` with `SHA256SUMS.txt`; review and publish it.
 
 Signing secrets live in the repository's `release` environment (deployment branch: `release` only),
 synced from the release manager's machine (`craftrules/release/signing-setup.md`). Missing secrets
@@ -29,3 +29,12 @@ Local packaging: `packaging/macos/package.sh --arch universal`, `packaging/windo
 Dry run: `gh workflow run release.yml --ref <branch>` builds the unsigned jobs (version, Linux,
 Linux riscv64, Flatpak, FreeBSD, web) on any branch; the signing jobs are refused there by the `release`
 environment's branch rule, so no draft release is made.
+
+## Icons
+
+`assets/app-icon/wordcraft.svg` is the WordLogic app icon ("W trace", Aegean Logic brand artwork
+under `docs/brand/LICENSE-brand.txt`), used from 48 px up; `wordcraft-small.svg` is its simplified
+glyph for 32 px and below. `packaging/icons.sh` regenerates the 1024 px PNG, the macOS 512 px PNG,
+the `.icns` (`cargo xtask icns`), the `.ico` (`cargo xtask ico`) and the hicolor PNGs from them; it
+needs `resvg` and runs on any platform. The outputs are committed, so packaging never needs those
+tools. Every file has a row in `ATTRIBUTION.md` (`cargo xtask assets`).

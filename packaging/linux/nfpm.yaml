@@ -13,8 +13,8 @@ release: 1
 section: graphics
 priority: optional
 maintainer: ${WORDCRAFT_MAINTAINER}
-vendor: Learning Machines LLC
-homepage: https://getartcraft.com/apps/wordcraft
+vendor: Aegean Logic
+homepage: https://www.aegeanlogic.co.uk
 license: MIT OR Apache-2.0
 description: |-
   Open-source, native word processor that works the way Word users expect.

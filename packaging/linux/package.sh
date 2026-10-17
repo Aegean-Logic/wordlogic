@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build and package WordCraft for Linux (<arch> is x86_64 or aarch64, or riscv64 when cross-compiling):
+# Build and package WordLogic for Linux (<arch> is x86_64 or aarch64, or riscv64 when cross-compiling):
 #
 #   $DIST/wordcraft-<version>-linux-<arch>.AppImage  any distro with glibc >= the build host's
 #   $DIST/wordcraft-<version>-linux-<arch>.AppImage.zsync  delta updates (needs zsyncmake)
@@ -17,7 +17,7 @@ set -euo pipefail
 # shellcheck source=../env.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../env.sh"
 HERE="$ROOT/packaging/linux"
-APP_ID=ai.storyteller.wordcraft
+APP_ID=uk.co.aegeanlogic.wordlogic
 
 SKIP_BUILD=0
 FORMATS="appimage deb rpm tar"
@@ -37,10 +37,11 @@ case "$ARCH" in
   aarch64 | arm64) ARCH=aarch64; DEB_ARCH=arm64 ;;
   *) echo "unsupported architecture $ARCH" >&2; exit 2 ;;
 esac
-export WORDCRAFT_MAINTAINER="${WORDCRAFT_MAINTAINER:-WordCraft maintainers <wordcraft@storyteller.ai>}"
+: "${WORDCRAFT_MAINTAINER:?set WORDCRAFT_MAINTAINER, e.g. 'Aegean Logic <packages@example.com>', for the .deb/.rpm Maintainer field}"
+export WORDCRAFT_MAINTAINER
 BASENAME="wordcraft-$VERSION-linux-$ARCH"
 
-echo "==> WordCraft $VERSION for Linux $ARCH ($FORMATS)"
+echo "==> WordLogic $VERSION for Linux $ARCH ($FORMATS)"
 
 if [ "$SKIP_BUILD" = 0 ]; then
   if [ -n "${CROSS_TARGET:-}" ]; then
@@ -99,7 +100,7 @@ fi
 
 # ---- AppImage -----------------------------------------------------------------------------------
 if has appimage; then
-  APPDIR="$WORK/WordCraft.AppDir"
+  APPDIR="$WORK/WordLogic.AppDir"
   cp -R "$STAGE" "$APPDIR"
   mv "$APPDIR/usr/share/doc" "$WORK/doc-unused"
   ln -s usr/bin/wordcraft "$APPDIR/AppRun"

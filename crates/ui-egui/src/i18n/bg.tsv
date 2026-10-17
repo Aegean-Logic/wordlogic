@@ -19,9 +19,8 @@
 	(no style)	(без стил)
 	(no suggestions)	(няма предложения)
 	1.5 Line Spacing	Междуредие 1,5
-	A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team.	Безплатен текстообработващ редактор с отворен код, написан от нулата на Rust.\nЧаст от Crafting Apps на екипа на ArtCraft.
 	About	Относно
-	About WordCraft	За WordCraft
+	About WordLogic	За WordLogic
 	Accept	Приемане
 	Accept All Changes	Приемане на всички промени
 	Accept This Change	Приемане на тази промяна
@@ -227,7 +226,6 @@
 	Comment	Коментар
 	Comments	Коментари
 	Comments Pane	Панел с коментари
-	Community\nDiscord	Общност\nв Discord
 	Compact	Компактно
 	Compare	Сравняване
 	Compress Pictures	Компресиране на изображенията
@@ -280,8 +278,6 @@
 	Different First Page	Различна първа страница
 	Different Odd & Even Pages	Различни четни и нечетни страници
 	Direct formatting	Директно форматиране
-	Discord	Discord
-	Discord community	Общност в Discord
 	Display	Показване
 	Display for Review	Показване за преглед
 	Distribute Columns	Разпределяне на колоните
@@ -446,8 +442,6 @@
 	Inspect Styles at Selection	Проверка на стиловете при селекцията
 	Interface language:	Език на интерфейса:
 	Italic	Курсив
-	Join the ArtCraft community on Discord	Присъединете се към общността на ArtCraft в Discord
-	Join us on Discord: discord.gg/artcraft	Присъединете се към нас в Discord: discord.gg/artcraft
 	Justify	Двустранно подравняване
 	Keep Lines Together	Редовете заедно
 	Keep Text Only	Запазване само на текста
@@ -459,7 +453,7 @@
 	Landscape	Пейзаж
 	Language	Език
 	{language} (no dictionary)	{language} (няма речник)
-	No spelling dictionary for {language} is installed, so it isn't checked. WordCraft looks for the Hunspell dictionary {name} in the WORDCRAFT_DICTIONARIES folder and in the usual system locations.	Не е инсталиран правописен речник за {language}, затова текстът не се проверява. WordCraft търси речника Hunspell {name} в папката WORDCRAFT_DICTIONARIES и на обичайните места в системата.
+	No spelling dictionary for {language} is installed, so it isn't checked. WordLogic looks for the Hunspell dictionary {name} in the WORDCRAFT_DICTIONARIES folder and in the usual system locations.	Не е инсталиран правописен речник за {language}, затова текстът не се проверява. WordLogic търси речника Hunspell {name} в папката WORDCRAFT_DICTIONARIES и на обичайните места в системата.
 	Lasso	Ласо
 	Last Column	Последна колона
 	Last commit	Последно подаване
@@ -489,7 +483,6 @@
 	Link to Previous	Връзка към предишния
 	Links	Връзки
 	Location: {path}	Местоположение: {path}
-	MIT OR Apache-2.0. Copyright (c) 2026 ArtCraft Team and the WordCraft contributors.	MIT OR Apache-2.0. Авторско право (c) 2026 ArtCraft Team и сътрудниците на WordCraft.
 	Macros	Макроси
 	Mailings	Кореспонденция
 	Manage Sources	Управление на източниците
@@ -770,7 +763,6 @@
 	Show only comments and formatting in balloons	Показване само на коментарите и форматирането в балончета
 	Show revisions in balloons	Показване на редакциите в балончета
 	Show rulers	Показване на линийките
-	Show the community button in the title bar	Показване на бутона за общността в заглавната лента
 	Show/Hide ¶	Показване/скриване на ¶
 	Show\nComments	Показване на\nкоментарите
 	Shrink Font 1 Point	Намаляване на шрифта с 1 пункт
@@ -786,7 +778,6 @@
 	Small caps	Малки главни букви
 	SmartArt	SmartArt
 	Sort	Сортиране
-	Source code: github.com/storytold/wordcraft	Изходен код: github.com/storytold/wordcraft
 	Space	Интервал
 	Space before/after:	Разстояние преди/след:
 	Spacing	Разстояние
@@ -921,7 +912,7 @@
 	Word Right	Дума надясно
 	Word document (*.docx)	Документ на Word (*.docx)
 	WordArt	WordArt
-	WordCraft	WordCraft
+	WordLogic	WordLogic
 	Words	Думи
 	Words only	Само думи
 	Wrap Text	Обтичане на текста
@@ -988,7 +979,7 @@
 	Stopped	Спряно
 	Speed	Скорост
 	Normal speed	Нормална скорост
-	AutoSave documents you have saved in WordCraft	Автоматично запазване на документите, които сте запазили в WordCraft
+	AutoSave documents you have saved in WordLogic	Автоматично запазване на документите, които сте запазили в WordLogic
 	AutoSave failed: {error}. Save the document to turn AutoSave back on.	Автоматичното запазване е неуспешно: {error}. Запазете документа, за да включите отново автоматичното запазване.
 	Couldn't download {name}: {error}	Неуспешно изтегляне на {name}: {error}
 	Do you want to save changes to {name}?	Искате ли да запазите промените в {name}?
@@ -1157,7 +1148,6 @@
 	Insert a new equation (Alt+=)	Вмъкване на ново уравнение (Alt+=)
 	Leave the equation (Esc)	Излизане от уравнението (Esc)
 	Preview	Визуализация
-	getartcraft.com/apps/wordcraft	getartcraft.com/apps/wordcraft
 	Draw Ink	Рисуване с мастило
 	Erase Ink	Изтриване на мастило
 	Hide Ink	Скриване на мастилото
@@ -1293,7 +1283,7 @@
 	The document will be saved with a password. Save it to protect it.	Документът ще бъде запазен с парола. Запазете го, за да го защитите.
 	The password is removed. Save the document to keep the change.	Паролата е премахната. Запазете документа, за да запазите промяната.
 	The passwords don't match.	Паролите не съвпадат.
-	Keep the password somewhere safe: without it nobody, WordCraft included, can open the document. Leave both boxes empty to remove the password.	Съхранявайте паролата на сигурно място: без нея никой, включително WordCraft, не може да отвори документа. Оставете двете полета празни, за да премахнете паролата.
+	Keep the password somewhere safe: without it nobody, WordLogic included, can open the document. Leave both boxes empty to remove the password.	Съхранявайте паролата на сигурно място: без нея никой, включително WordLogic, не може да отвори документа. Оставете двете полета празни, за да премахнете паролата.
 	Align Top Left	Подравняване горе вляво
 	Align Top Center	Подравняване горе в центъра
 	Align Top Right	Подравняване горе вдясно
@@ -2393,7 +2383,7 @@
 	Word document	Документ на Word
 	All files	Всички файлове
 	Recipient lists	Списъци с получатели
-	The system file dialog isn't available, so WordCraft shows its own. To get the system dialog, install a file chooser portal (such as xdg-desktop-portal-gtk) or zenity.	Системният диалогов прозорец за файлове не е наличен, затова WordCraft показва своя. За да получите системния, инсталирайте портал за избор на файлове (например xdg-desktop-portal-gtk) или zenity.
+	The system file dialog isn't available, so WordLogic shows its own. To get the system dialog, install a file chooser portal (such as xdg-desktop-portal-gtk) or zenity.	Системният диалогов прозорец за файлове не е наличен, затова WordLogic показва своя. За да получите системния, инсталирайте портал за избор на файлове (например xdg-desktop-portal-gtk) или zenity.
 	Up one level	Едно ниво нагоре
 	Home folder	Домашна папка
 	{name} wasn't found.	{name} не е намерен.
@@ -2401,8 +2391,8 @@
 	This folder can't be read: {error}	Тази папка не може да бъде прочетена: {error}
 	Showing the first {count} items.	Показани са първите {count} елемента.
 	File name:	Име на файла:
-	Browse in WordCraft…	Разглеждане в WordCraft…
-	Open a file with WordCraft's own browser when the system file dialog doesn't appear.	Отваряне на файл чрез собствения браузър на WordCraft, когато системният диалогов прозорец за файлове не се появява.
+	Browse in WordLogic…	Разглеждане в WordLogic…
+	Open a file with WordLogic's own browser when the system file dialog doesn't appear.	Отваряне на файл чрез собствения браузър на WordLogic, когато системният диалогов прозорец за файлове не се появява.
 	Resize Table by Dragging	Преоразмеряване на таблица чрез плъзгане
 	Visual effects	Визуални ефекти
 	Animation effects:	Ефекти на анимация:
@@ -2428,23 +2418,23 @@
 	TOC {n}	Съдържание {n}
 	Good afternoon	Добър ден
 	Context	Според контекста
-	Couldn't make WordCraft the default: {error}	WordCraft не можа да стане приложение по подразбиране: {error}
+	Couldn't make WordLogic the default: {error}	WordLogic не можа да стане приложение по подразбиране: {error}
 	Do Not Check Spelling or Grammar	Без проверка на правописа и граматиката
 	Hindi	Хинди
-	In Default apps, choose WordCraft for the document types you want it to open.	В „Приложения по подразбиране“ изберете WordCraft за типовете документи, които искате да отваря.
-	Make WordCraft the default for Word documents…	WordCraft по подразбиране за документи на Word…
+	In Default apps, choose WordLogic for the document types you want it to open.	В „Приложения по подразбиране“ изберете WordLogic за типовете документи, които искате да отваря.
+	Make WordLogic the default for Word documents…	WordLogic по подразбиране за документи на Word…
 	Numerals	Цифри
 	Numerals:	Цифри:
-	Opens .docx, .doc, .rtf and .odt files and Word templates with WordCraft from now on.	Отсега нататък файловете .docx, .doc, .rtf и .odt и шаблоните на Word ще се отварят с WordCraft.
-	Opens Settings › Default apps, where you choose WordCraft for .docx and the other document types.	Отваря „Настройки › Приложения по подразбиране“, където избирате WordCraft за .docx и другите типове документи.
+	Opens .docx, .doc, .rtf and .odt files and Word templates with WordLogic from now on.	Отсега нататък файловете .docx, .doc, .rtf и .odt и шаблоните на Word ще се отварят с WordLogic.
+	Opens Settings › Default apps, where you choose WordLogic for .docx and the other document types.	Отваря „Настройки › Приложения по подразбиране“, където избирате WordLogic за .docx и другите типове документи.
 	Reading	Четене
 	Reading Column Width	Ширина на колоната при четене
 	Reading Line Spacing	Междуредие при четене
 	Reading Text Size	Размер на текста при четене
 	Show KeyTips (Alt or F10)	Показване на клавишните подсказки (Alt или F10)
 	System	Според системата
-	To open Word documents with WordCraft by default: select one in Finder, choose File › Get Info, pick WordCraft under Open with, then click Change All.	За да се отварят документите на Word с WordCraft по подразбиране: изберете документ във Finder, изберете File › Get Info, изберете WordCraft под Open with и щракнете Change All.
-	WordCraft is now the default app for Word documents.	WordCraft вече е приложението по подразбиране за документи на Word.
+	To open Word documents with WordLogic by default: select one in Finder, choose File › Get Info, pick WordLogic under Open with, then click Change All.	За да се отварят документите на Word с WordLogic по подразбиране: изберете документ във Finder, изберете File › Get Info, изберете WordLogic под Open with и щракнете Change All.
+	WordLogic is now the default app for Word documents.	WordLogic вече е приложението по подразбиране за документи на Word.
 	Correct TWo INitial CApitals	Коригиране на ДВе НАчални ГЛавни букви
 	Correct accidental usage of cAPS LOCK key	Коригиране на случайно използване на клавиша cAPS LOCK
 	Picture	Картина
@@ -2500,8 +2490,8 @@
 	Undo History	История на отмяната
 	Undo {n} Actions	Отмяна на {n} действия
 	Start-up	Стартиране
-	Show the Start screen when WordCraft starts	Показване на началния екран при стартиране на WordCraft
-	On: WordCraft opens on File › Home, with a blank document, the templates and your recent documents. Off: it opens a blank document.	Вкл.: WordCraft се отваря на Файл › Начало с празен документ, шаблоните и последните документи. Изкл.: отваря се празен документ.
+	Show the Start screen when WordLogic starts	Показване на началния екран при стартиране на WordLogic
+	On: WordLogic opens on File › Home, with a blank document, the templates and your recent documents. Off: it opens a blank document.	Вкл.: WordLogic се отваря на Файл › Начало с празен документ, шаблоните и последните документи. Изкл.: отваря се празен документ.
 	Typing	Въвеждане
 	Level 4	Ниво 4
 	Level 5	Ниво 5
@@ -2548,7 +2538,7 @@
 	{name}   {height} × {width} mm	{name}   {height} × {width} мм
 	{width} × {height} mm	{width} × {height} мм
 	{kind}, {columns} × {rows}, {size} ({paper})	{kind}, {columns} × {rows}, {size} ({paper})
-	Researcher needs an online service; WordCraft keeps your documents offline.	Изследователят изисква онлайн услуга, а WordCraft пази документите ви офлайн.
+	Researcher needs an online service; WordLogic keeps your documents offline.	Изследователят изисква онлайн услуга, а WordLogic пази документите ви офлайн.
 	These settings will be used for new documents.	Тези настройки ще се използват за новите документи.
 	can't split at the first row	таблицата не може да се раздели на първия ред
 	select two or more cells to merge	изберете две или повече клетки за обединяване
@@ -2621,3 +2611,14 @@
 # Reading Mode column widths (#1040)
 	Narrow	Тясна
 	Medium	Средна
+
+# WordLogic: the About box and the Aegean Logic website button.
+	Aegean Logic	Aegean Logic
+	Visit www.aegeanlogic.co.uk	Посетете www.aegeanlogic.co.uk
+	Aegean Logic website	Уебсайт на Aegean Logic
+	Aegean Logic\nWebsite	Уебсайт на\nAegean Logic
+	Show the Aegean Logic button in the title bar	Показване на бутона на Aegean Logic в заглавната лента
+	by Aegean Logic	от Aegean Logic
+	A free, open-source word processor written from scratch in Rust, based on WordCraft.	Безплатен текстообработващ редактор с отворен код, написан от нулата на Rust, базиран на WordCraft.
+	www.aegeanlogic.co.uk	www.aegeanlogic.co.uk
+	MIT OR Apache-2.0. Copyright (c) 2026 Aegean Logic. Based on WordCraft, copyright (c) 2026 ArtCraft Team and the WordCraft contributors.	MIT OR Apache-2.0. Авторско право (c) 2026 Aegean Logic. Базиран на WordCraft, авторско право (c) 2026 ArtCraft Team и сътрудниците на WordCraft.

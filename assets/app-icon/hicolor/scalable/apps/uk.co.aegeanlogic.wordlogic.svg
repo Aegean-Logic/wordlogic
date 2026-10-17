@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- WordLogic app icon, "W trace": a page with an ink header band and faint text lines, and a
+       sea trace forming a W that ends in the aqua node, on a marble tile. Sibling of GridLogic's
+       "Sheet trace". Original work, built from the Aegean Logic palette: ink #0A2A3B,
+       sea #12718C, aqua #2FC6C0, marble #F4F2EC. Used from 48 px up;
+       wordlogic-small.svg is the simplified glyph for 32 px and below. -->
+  <rect width="512" height="512" rx="112" fill="#F4F2EC"/>
+  <!-- the page and its header band -->
+  <rect x="112" y="72" width="288" height="368" rx="28" fill="#FFFFFF"/>
+  <path d="M112 100 A28 28 0 0 1 140 72 H372 A28 28 0 0 1 400 100 V136 H112 Z" fill="#0A2A3B"/>
+  <!-- text lines -->
+  <path d="M152 200 H360 M152 264 H360 M152 328 H360 M152 392 H300" fill="none" stroke="#E6EAEB" stroke-width="12" stroke-linecap="round"/>
+  <rect x="112" y="72" width="288" height="368" rx="28" fill="none" stroke="#0A2A3B" stroke-width="16"/>
+  <!-- the W trace and its node -->
+  <polyline points="152,212 204,376 256,256 308,376 356,216" fill="none" stroke="#12718C" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="356" cy="216" r="34" fill="#2FC6C0" stroke="#FFFFFF" stroke-width="14"/>
+</svg>

@@ -4,6 +4,7 @@
 //! invoked through `std::process::Command`.
 
 mod assets;
+mod icns;
 mod ico;
 mod layers;
 mod parity;
@@ -31,6 +32,8 @@ commands:
                   needs poppler (pdftoppm, pdftotext)
   ico <out.ico> <in.png>...
                   pack square PNGs (<= 256 px) into a Windows .ico (see packaging/icons.sh)
+  icns <out.icns> <in.png>...
+                  pack square PNGs (16-1024 px) into a macOS .icns (see packaging/icons.sh)
 ";
 
 fn main() -> ExitCode {
@@ -45,6 +48,7 @@ fn main() -> ExitCode {
         Some("stats") => stats::run(&root(), rest.contains(&"--exact")),
         Some("parity") => parity::run(&root()),
         Some("ico") => ico::run(&rest),
+        Some("icns") => icns::run(&rest),
         Some("visual-diff") => visual_diff::run(&rest),
         Some("version") => version::run(&root(), &rest),
         Some("-h" | "--help" | "help") | None => {

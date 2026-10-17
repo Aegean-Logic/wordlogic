@@ -30,4 +30,4 @@ jobs:
     uses: storytold/craft-common-actions/.github/workflows/windows-arm64.yml@main
     with:
       app-name: wordcraft
-      app-dir: WordCraft
+      app-dir: WordLogic

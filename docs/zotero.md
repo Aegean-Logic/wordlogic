@@ -1,6 +1,6 @@
 # Zotero
 
-WordCraft works with the [Zotero](https://www.zotero.org) desktop app the way Word does: Zotero's
+WordLogic works with the [Zotero](https://www.zotero.org) desktop app the way Word does: Zotero's
 own citation dialog, all of its citation styles, automatic bibliography and refresh. Nothing to
 install in Zotero; it only has to be running. The **Zotero** tab in the ribbon has the buttons:
 Add/Edit Citation, Add Note, Add/Edit Bibliography, Refresh, Document Preferences and Unlink
@@ -20,7 +20,7 @@ Citations (each runs one of the commands below).
 | `ui.zotero.answer` | `{"button": n}`: answer a question Zotero is asking (OK/Yes 1, No/Cancel 0; with Yes/No/Cancel: Yes 2, No 1, Cancel 0) |
 
 They run in the app (and through the control channel and MCP bridged to the app). A command
-returns at once with `{"started": …}`; Zotero then works in its own window and WordCraft answers
+returns at once with `{"started": …}`; Zotero then works in its own window and WordLogic answers
 it in the background. All changes from one command are one undo step. If New or Open replaces
 the document while a command is running, Zotero's remaining calls for it get an error and the
 new document is left as it is.
@@ -51,8 +51,8 @@ were; a note that held only the citation is removed.
 Citations are stored as Word's Zotero plugin stores them — fields with the code
 `ADDIN ZOTERO_ITEM CSL_CITATION {…}`, the bibliography as `ADDIN ZOTERO_BIBL … CSL_BIBLIOGRAPHY`,
 document preferences in the custom properties `ZOTERO_PREF_1…n` — so one document can be edited
-in Word and WordCraft in turn, with Zotero working in both. (Zotero talks to WordCraft over the
-protocol it uses for LibreOffice and calls the field type "Reference Mark" there; WordCraft keeps
+in Word and WordLogic in turn, with Zotero working in both. (Zotero talks to WordLogic over the
+protocol it uses for LibreOffice and calls the field type "Reference Mark" there; WordLogic keeps
 Word's "Field" in the file.)
 
 ## Limits

@@ -1,4 +1,6 @@
-# WordCraft — instructions for agents
+# WordLogic (WordCraft fork) — instructions for agents
+
+**This is Aegean Logic's fork, shipped as WordLogic.** Everything users see says WordLogic and carries Aegean Logic branding (`docs/brand/`). Internal identifiers keep the upstream name on purpose, to keep upstream merges cheap: crate and folder names (`wordcraft-*`), the binaries, the preferences folder, the control-key paths, `WORDCRAFT_*` environment variables, the web bridge's `wordcraft:*` messages and the Nextcloud app id. Upstream (`storytold/wordcraft`) is the `upstream` remote. Fork work: co-editing (`docs/co-editing.md`) and the Nextcloud app (`../wordcraft-nextcloud`).
 
 WordCraft is a clean-room, open-source, Rust-native word processor targeting Microsoft Word parity — and going further on speed, openness and agent control. It runs natively on macOS, Windows, Linux and BSD, and on the web via WASM. Siblings with the same conventions: `../photocraft` (Photoshop), `../vectorcraft` (Illustrator), `../filmcraft` (Premiere), `../lightcraft` (Lightroom), `../pdfcraft` (Acrobat), `../effectcraft` (After Effects), `../designcraft` (InDesign). Shared rules and learnings: [`storytold/craftrules`](https://github.com/storytold/craftrules) (`../../craftrules`) — read its `AGENTS.md`.
 
@@ -22,6 +24,7 @@ People trust WordCraft with their writing; a crash loses their work. **This outr
 - **Every asset file has a row in [`ATTRIBUTION.md`](ATTRIBUTION.md)** (author, source, licence). `cargo xtask assets` (part of `cargo xtask ci`) fails otherwise. Add the row in the same commit as the file.
 - Fonts: new font files go to [`storytold/craft-fonts`](https://github.com/storytold/craft-fonts), never this repo; it's an optional build input (`CRAFT_FONTS_DIR`). Documents asking for proprietary fonts (Calibri, Aptos, Cambria…) are rendered with installed system fonts or metric-compatible open substitutes (`crates/fonts/src/word.rs`) — never bundle proprietary fonts.
 - Templates, sample documents and themes are our own text and colours (`crates/engine/src/sample.rs`, `cmd/design.rs`). Demo images are public domain, with sources recorded.
+- The Aegean Logic brand files in `docs/brand/` and the WordLogic app icon in `assets/app-icon/` (supplied by Aegean Logic; regenerate the outputs with `packaging/icons.sh`) are Aegean Logic trademarks under `docs/brand/LICENSE-brand.txt`, the one exception.
 
 ## Clean room
 - Microsoft Word is installed on the dev machine and may be **observed** black-box: run it, use its UI with synthetic documents, take screenshots **of its window only** (by window id — the machine runs other work; never capture the whole desktop) stored only under `plan/word/screenshots/` (gitignored, never committed).
