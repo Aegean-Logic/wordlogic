@@ -74,7 +74,24 @@ pub type Result<T> = std::result::Result<T, DocError>;
 /// A free id, `min` or more, for something new (a part, a list, a comment): one past `largest`, the
 /// largest id in use, so ids keep growing; once that would pass `u32::MAX` (a file can use any id),
 /// the lowest one `used` (every id in use) doesn't hold. `None` when every id from `min` up is taken.
+///
+/// While an [`IdSpace`] is set (co-editing), the id comes from that range instead, so two people
+/// adding something at the same moment can't pick the same id.
 pub fn free_id(largest: Option<u32>, used: impl Iterator<Item = u32>, min: u32) -> Option<u32> {
+    if let Some(space) = id_space() {
+        let lo = space.lo.max(min);
+        let mut ids: Vec<u32> = used.filter(|&i| i >= lo && i < space.hi).collect();
+        ids.sort_unstable();
+        ids.dedup();
+        let mut want = lo;
+        for i in ids {
+            if i > want {
+                break;
+            }
+            want = want.checked_add(1)?;
+        }
+        return (want < space.hi).then_some(want);
+    }
     let Some(largest) = largest else { return Some(min) };
     if let Some(next) = largest.checked_add(1) {
         return Some(next.max(min));
@@ -90,6 +107,36 @@ pub fn free_id(largest: Option<u32>, used: impl Iterator<Item = u32>, min: u32) 
         want = want.checked_add(1)?;
     }
     Some(want)
+}
+
+/// A range of ids (`lo..hi`) reserved for one person in a shared document (co-editing): while it
+/// is set on this thread, [`free_id`] and [`Document::add_media`] take new ids and media keys from
+/// it rather than one past the largest, which someone else could be taking at the same moment.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct IdSpace {
+    pub lo: u32,
+    pub hi: u32,
+}
+
+thread_local! {
+    static ID_SPACE: std::cell::Cell<Option<IdSpace>> = const { std::cell::Cell::new(None) };
+}
+
+/// The id range new ids come from on this thread, if one is set.
+pub fn id_space() -> Option<IdSpace> {
+    ID_SPACE.with(|c| c.get())
+}
+
+/// Runs `f` with new ids taken from `space` (or one past the largest, for `None`).
+pub fn with_id_space<R>(space: Option<IdSpace>, f: impl FnOnce() -> R) -> R {
+    struct Restore(Option<IdSpace>);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            ID_SPACE.with(|c| c.set(self.0));
+        }
+    }
+    let _restore = Restore(ID_SPACE.with(|c| c.replace(space)));
+    f()
 }
 
 /// A block in a story. (Blocks are always behind an `Arc`, so the size difference is fine.)
@@ -1272,12 +1319,15 @@ impl Document {
         if let Some((k, _)) = self.media.iter().find(|(_, v)| v.as_slice() == bytes.as_slice()) {
             return k.clone();
         }
+        // In a shared document the key carries this person's id range: someone else adding a
+        // picture at the same moment would otherwise pick the same name for other bytes.
+        let prefix = id_space().map(|s| format!("c{:x}-", s.lo)).unwrap_or_default();
         let n = self.media.len() + 1;
-        let mut key = format!("image{n}.{ext}");
+        let mut key = format!("{prefix}image{n}.{ext}");
         let mut i = n;
         while self.media.contains_key(&key) {
             i += 1;
-            key = format!("image{i}.{ext}");
+            key = format!("{prefix}image{i}.{ext}");
         }
         self.media.insert(key.clone(), Arc::new(bytes));
         key
