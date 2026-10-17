@@ -73,6 +73,51 @@ Local test: `python3 -m http.server 8765` inside the folder, then open http://lo
   downloads) are blocked.
 - Don't send `X-Frame-Options: DENY` or a `frame-ancestors` CSP that excludes the embedding page.
 
+## Opening and saving through the page (`?host=parent`)
+
+With `?host=parent` in the iframe `src`, WordLogic opens documents the embedding page sends it
+and hands the page every file it saves instead of downloading it. This suits a page with its own
+storage, such as a Nextcloud app. The page must be on the same origin as WordLogic: messages
+from anywhere else are ignored, and WordLogic only answers its parent window. In this mode
+WordLogic starts on a blank document (not the Start screen or a sample), and it doesn't guard
+leaving the page itself: the page does that, from `wordcraft:dirty`.
+
+Messages are plain objects passed with `postMessage`, each with a `type`:
+
+| Message | Direction | Fields |
+|---|---|---|
+| `wordcraft:ready` | to the page | `version`; `ack` (true with `&ack=1`). Send the file to open after this. |
+| `wordcraft:open` | from the page | `name`, `bytes` (`ArrayBuffer` or `Uint8Array`, up to 200 MB) |
+| `wordcraft:save` | to the page | `name`, `bytes` (a transferred `ArrayBuffer`); `id` with `&ack=1`. Sent for Save, Save As, and Export as PDF or picture. |
+| `wordcraft:saved` | from the page (`&ack=1`) | `id`; optional `name` when the page stored the file under another name |
+| `wordcraft:saveFailed` | from the page (`&ack=1`) | `id`, `error` (shown to the user) |
+| `wordcraft:dirty` | to the page | `dirty`: whether there are unsaved changes (with `&ack=1`, including a save the page hasn't confirmed) |
+| `wordcraft:failed` | to the page | `error`: the app couldn't start |
+
+Other query flags: `&author=Name` names the user for new comments and tracked changes.
+
+**Opening.** `name` is the file's name; only its last path component is used. It must end in an
+extension WordLogic opens as a document (`.docx`, `.docm`, `.dotx`, `.dotm`, `.doc`, `.dot`,
+`.odt`, `.rtf`, `.txt`, `.md`, `.html`, `.htm`, `.tex`, `.json`, `.xml`); anything else is
+ignored. Without a `name` the file opens as `Document.docx`. Empty `bytes` open a new blank
+document that saves under `name`, so a page can create a file and open it straight away.
+
+**Saving.** Save writes a Word document in its own format (`.docx`, `.docm`, `.dotx`, `.dotm`)
+and anything else (`.odt`, `.rtf`, `.doc`, `.txt`, …) as `.docx` under the same name, as the
+browser download does. A save of the document (rather than a copy such as a PDF) gives the
+document that name, or the page's `name` from `wordcraft:saved` when it has the same extension,
+so the next Save goes to the same file.
+
+**Save confirmation (`&ack=1`).** Without it, a document counts as saved as soon as WordLogic
+hands it to the page, even if the page then fails to store it. With it, every `wordcraft:save`
+carries an `id` and the page answers `wordcraft:saved` or `wordcraft:saveFailed` with that `id`.
+Until it answers, the save is in flight: `wordcraft:dirty` stays true, and a New or Open that
+asked to save changes first waits. `wordcraft:saveFailed` leaves the document unsaved and shows
+the user the page's `error`. Edits made after the handover stay unsaved either way. When the page
+confirms a newer save of the same document, older saves still waiting count as stored too. A page
+that leaves more than 64 saves unanswered has the oldest counted as failed. A WordLogic that
+doesn't know the flag answers `wordcraft:ready` without `ack: true`.
+
 ## Renderer selection and fallback flags
 
 WordCraft renders with wgpu. It uses **WebGPU** when the browser has it and falls back to
