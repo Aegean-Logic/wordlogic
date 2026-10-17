@@ -39,11 +39,15 @@
     <Property Id="ARPHELPLINK" Value="https://www.aegeanlogic.co.uk" />
 
     <!-- Installer UI (#198): WixUI_Minimal is welcome + license, progress, then a finish page so
-         people can see the install worked. Its dialogs and bitmaps are WiX's own
-         (WixToolset.UI.wixext); package.ps1 builds the license RTF from LICENSE-MIT and
+         people can see the install worked. Its dialogs are WiX's own (WixToolset.UI.wixext); the
+         bitmaps are Aegean Logic's: the ink-to-sea panel behind the welcome, license and finish
+         pages and the banner above the progress page (branding/, rendered by generate.ps1).
+         package.ps1 builds the license RTF from LICENSE-MIT and
          LICENSE-APACHE. The finish page offers to launch WordLogic (ticked by default) through
          WixShellExec (WixToolset.Util.wixext); silent installs (/qn) never show it. -->
     <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
+    <WixVariable Id="WixUIBannerBmp" Value="$(sys.SOURCEFILEDIR)branding\banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="$(sys.SOURCEFILEDIR)branding\dialog.bmp" />
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch WordLogic" />
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
     <Property Id="WixShellExecTarget" Value="[#WordcraftExe]" />

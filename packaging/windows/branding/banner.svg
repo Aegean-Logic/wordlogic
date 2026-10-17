@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="493" height="58" viewBox="0 0 493 58">
+  <!-- The Windows installer's top banner (WixUIBannerBmp: 493 x 58 px, behind the title and
+       description of the license and progress pages, which WiX draws in black on the left).
+       Aegean Logic palette: white field, a marble panel holding the brand kit's primary lockup
+       (referenced, not copied) and one aqua rule. generate.ps1 renders this to banner.bmp. -->
+  <rect width="493" height="58" fill="#FFFFFF"/>
+  <rect x="352" width="141" height="58" fill="#F4F2EC"/>
+  <image x="366" y="9" width="113" height="40" xlink:href="../../../docs/brand/aegean-logic-lockup.svg" preserveAspectRatio="xMidYMid meet"/>
+  <rect y="55" width="493" height="3" fill="#2FC6C0"/>
+</svg>
