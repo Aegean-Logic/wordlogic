@@ -119,11 +119,15 @@ pub(crate) fn push_segs(blocks: &[Arc<Block>], out: &mut Vec<Seg>) {
 
 /// Builds blocks back from segments. A run of text that no paragraph mark ends (before a table,
 /// or at the end) is closed with a plain mark, the same way on every copy, so whatever two edits
-/// made at once leave behind is still a well-formed story.
-pub(crate) fn blocks_from_segs(segs: Vec<Seg>) -> Blocks {
+/// made at once leave behind is still a well-formed story. Also returns where those marks went,
+/// as positions in the segments before them (the edit as applied includes them: see
+/// [`super::story::apply_story`]).
+pub(crate) fn blocks_from_segs(segs: Vec<Seg>) -> (Blocks, Vec<usize>) {
     let mut out: Blocks = Vec::new();
     let mut cur = Paragraph::new();
     let mut open = false;
+    let mut at = 0usize;
+    let mut added = Vec::new();
     fn push_text(p: &mut Paragraph, text: &str, props: CharProps) {
         if text.is_empty() {
             return;
@@ -143,6 +147,7 @@ pub(crate) fn blocks_from_segs(segs: Vec<Seg>) -> Blocks {
         out.push(Arc::new(Block::Para(p)));
     }
     for seg in segs {
+        let len = seg.len();
         match seg {
             Seg::Text { text, props } => {
                 push_text(&mut cur, &text, props);
@@ -161,16 +166,19 @@ pub(crate) fn blocks_from_segs(segs: Vec<Seg>) -> Blocks {
             Seg::Table(t) => {
                 if open {
                     close(&mut cur, ParaAttrs::default(), &mut out);
+                    added.push(at);
                     open = false;
                 }
                 out.push(Arc::new(Block::Table(t)));
             }
         }
+        at = at.saturating_add(len);
     }
     if open {
         close(&mut cur, ParaAttrs::default(), &mut out);
+        added.push(at);
     }
-    out
+    (out, added)
 }
 
 /// One unit of a story, borrowed.

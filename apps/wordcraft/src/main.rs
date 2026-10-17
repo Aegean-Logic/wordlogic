@@ -1,6 +1,7 @@
 //! WordCraft desktop app.
 //!
-//! Usage: `wordcraft [--control <port>] [--sample] [files…]`; `--help` prints `USAGE`.
+//! Usage: `wordcraft [--control <port>] [--sample] [files…] [wordlogic://open?…]`; `--help` prints
+//! `USAGE`.
 //!
 //! `--control <port>` (or `WORDCRAFT_CONTROL_PORT`) starts a localhost JSON-lines control server:
 //! `{"id":1,"key":"…","method":"engine.execute","params":{"command":"text.insert","params":{"text":"Hi"}}}`.
@@ -19,6 +20,7 @@ mod file_dialogs;
 #[cfg(any(target_os = "windows", test))]
 mod graphics;
 mod logging;
+mod nextcloud;
 mod print;
 mod region;
 #[cfg(target_os = "macos")]
@@ -32,20 +34,23 @@ use wordcraft_ui_egui::{
 
 /// The app, the restored window geometry (or, with none, the default: no position) until the
 /// first frame that knows the monitor has checked it, the control server's key file (removed on
-/// exit), the file dialogs the app asked for and, on macOS, the documents opened from Finder.
+/// exit), the file dialogs the app asked for, Nextcloud (`nextcloud`) and, on macOS, the
+/// documents opened from Finder.
 struct App(
     WordApp,
     Option<WindowGeometry>,
     Option<control_server::KeyFile>,
     file_dialogs::Launcher,
+    nextcloud::Nextcloud,
     #[cfg(target_os = "macos")] fmv_macos_events::Inbox,
 );
 
 impl eframe::App for App {
     fn logic(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         #[cfg(target_os = "macos")]
-        apple_events::poll(&self.4, &mut self.0, ctx);
+        apple_events::poll(&self.5, &mut self.0, ctx);
         self.0.logic(ctx);
+        self.4.poll(&mut self.0, ctx);
         self.3.show(frame);
         // A window that doesn't fit on its screen (the default size on a laptop) shrinks to fit
         // there, so all of the scroll bar can be dragged (#1215). Checked on the frame that first
@@ -77,6 +82,8 @@ impl eframe::App for App {
             {
                 ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
                 self.0.quit_requested = false;
+                // That path skips `on_exit`: leave a shared document's session first.
+                self.4.shutdown(&mut self.0);
                 schedule_macos_terminate(&self.0, self.2.as_ref());
             }
             #[cfg(not(target_os = "macos"))]
@@ -93,6 +100,8 @@ impl eframe::App for App {
         self.3.show(frame);
     }
     fn on_exit(&mut self) {
+        // Leave a shared document's session (the others see this person go).
+        self.4.shutdown(&mut self.0);
         print::finish_pending_jobs();
         save_prefs(&self.0);
         if let Some(key_file) = &self.2 {
@@ -138,6 +147,22 @@ fn schedule_macos_terminate(app: &WordApp, key_file: Option<&control_server::Key
 /// `ui.json` in the settings folder, which the MCP bridge also uses to find the control key.
 fn prefs_path() -> Option<std::path::PathBuf> {
     wordcraft_control_key::settings_dir().map(|b| b.join("ui.json"))
+}
+
+/// Where copies of Nextcloud documents are kept: the system's cache folder, not the settings
+/// folder (which may roam between computers).
+fn cache_dir() -> Option<std::path::PathBuf> {
+    let base = if cfg!(target_os = "macos") {
+        std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join("Library/Caches/WordLogic"))
+    } else if cfg!(windows) {
+        std::env::var_os("LOCALAPPDATA").map(|a| std::path::PathBuf::from(a).join("WordLogic"))
+    } else {
+        std::env::var_os("XDG_CACHE_HOME")
+            .map(std::path::PathBuf::from)
+            .or_else(|| std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join(".cache")))
+            .map(|c| c.join("wordlogic"))
+    };
+    base.map(|b| b.join("Nextcloud"))
 }
 
 /// Where the log files live: `logs` in the preferences folder (see `logging`).
@@ -236,8 +261,9 @@ fn write_prefs(path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
 /// Native file dialogs, shown without blocking the window (`file_dialogs`, #94), File › Print
 /// through the system spooler (`print`), the system clipboard's text, formatted copies,
 /// pictures and format names (`clipboard`, #45, #584, #687, #833), the system's animation setting
-/// (`animations`), and making WordCraft the default app for Word documents (`default_apps`, #295).
-fn services(file_dialog: file_dialogs::Hook, ctx: &egui::Context) -> Services {
+/// (`animations`), making WordCraft the default app for Word documents (`default_apps`, #295), and
+/// Nextcloud (`nextcloud`).
+fn services(file_dialog: file_dialogs::Hook, ctx: &egui::Context, cloud: wordcraft_ui_egui::cloud::Cloud) -> Services {
     Services {
         file_dialog: Some(file_dialog),
         printers: Some(print::discover()),
@@ -250,6 +276,7 @@ fn services(file_dialog: file_dialogs::Hook, ctx: &egui::Context) -> Services {
         set_clipboard_html: Some(Box::new(clipboard::set_html)),
         clipboard_rtf: Some(Box::new(clipboard::rtf)),
         clipboard_formats: Some(Box::new(clipboard::formats)),
+        cloud: Some(cloud),
         ..Default::default()
     }
 }
@@ -268,11 +295,14 @@ wordcraft — the WordLogic desktop app
 
 USAGE:
   wordcraft [--sample] [--control PORT] [FILE…]
+  wordcraft wordlogic://open?server=SERVER&path=PATH
 
 OPTIONS:
   --sample            open the sample document
   --control PORT      start the localhost control server on PORT, for agents and scripts
                       (or set WORDCRAFT_CONTROL_PORT); see docs/control-protocol.md
+  wordlogic://…       open a document from Nextcloud (Open in Desktop App), signing in first
+                      if needed
   --version           print the version
   -h, --help          print this help
 ";
@@ -322,6 +352,7 @@ fn main() -> eframe::Result {
     logging::install_panic_hook();
     let mut control_port: Option<u16> = std::env::var("WORDCRAFT_CONTROL_PORT").ok().and_then(|p| p.parse().ok());
     let mut files = Vec::new();
+    let mut links: Vec<String> = Vec::new();
     let mut sample = false;
     let (args, other_files) = text_args();
     let mut bad_control: Option<Option<String>> = None;
@@ -346,6 +377,8 @@ fn main() -> eframe::Result {
                 let _ = std::io::Write::write_all(&mut std::io::stdout(), USAGE.as_bytes());
                 return Ok(());
             }
+            // "Open in Desktop App" in the browser: a document in Nextcloud (`nextcloud.rs`).
+            a if a.get(..10).is_some_and(|p| p.eq_ignore_ascii_case("wordlogic:")) => links.push(a.to_string()),
             _ => files.push(a),
         }
     }
@@ -421,7 +454,18 @@ fn main() -> eframe::Result {
             let (file_dialog, dialogs) = file_dialogs::hook(&cc.egui_ctx);
             let mut session = Session::new(doc);
             session.system_region = region;
-            let mut app = WordApp::new(session, services(file_dialog, &cc.egui_ctx));
+            // Nextcloud, as OneDrive is to Word: the File view's Nextcloud places and sharing.
+            let mut nextcloud = nextcloud::Nextcloud::new(
+                wordcraft_control_key::settings_dir().filter(|_| prefs_enabled()).map(|d| d.join("nextcloud.json")),
+                cache_dir().filter(|_| prefs_enabled()),
+                nextcloud::open_in_browser,
+            );
+            for link in &links {
+                if !nextcloud.open_link(link) {
+                    log::warn!("not a WordLogic link: {link}");
+                }
+            }
+            let mut app = WordApp::new(session, services(file_dialog, &cc.egui_ctx, nextcloud.cloud()));
             load_prefs(&mut app);
             load_user_dictionary(&mut app);
             // A region chosen in File › Options replaces the system's for the first blank
@@ -456,7 +500,7 @@ fn main() -> eframe::Result {
             // Nothing to open (no files, no sample, no control channel driving the editor): start
             // on File › Home, as Word does (#766), unless the Start screen option is off. Files
             // macOS hands over later open on top of it and close it (`apple_events`).
-            if files.is_empty() && other_files.is_empty() && !sample && control_port.is_none() {
+            if files.is_empty() && other_files.is_empty() && links.is_empty() && !sample && control_port.is_none() {
                 app.start_screen();
             }
             for f in files {
@@ -473,6 +517,7 @@ fn main() -> eframe::Result {
                 Some(restored.unwrap_or_default()),
                 key_file,
                 dialogs,
+                nextcloud,
                 #[cfg(target_os = "macos")]
                 apple_events.connect(&cc.egui_ctx),
             )))

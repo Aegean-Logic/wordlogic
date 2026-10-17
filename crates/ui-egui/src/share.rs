@@ -1,72 +1,17 @@
 //! The Share dialog: share the document with people, or by link, through the host's cloud
-//! (Nextcloud), as Word's Share does through OneDrive. The host does the talking ([`Cloud`]);
-//! this module is only the dialog, the same in the browser and on the desktop.
+//! (Nextcloud), as Word's Share does through OneDrive. The host does the talking
+//! ([`crate::cloud::Cloud`]: the page in the browser, Nextcloud's sharing API on the desktop);
+//! this module is only the dialog, the same in both.
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 
 use egui::{RichText, vec2};
 use serde::Deserialize;
 use serde_json::{Value as Json, json};
 
 use crate::WordApp;
+use crate::cloud::next_request_id;
 use crate::theme::{Tokens, regular};
-
-/// Answers from the cloud: (request id, result).
-pub type CloudInbox = Arc<Mutex<Vec<(u64, Result<Json, String>)>>>;
-
-/// The host's cloud, for sharing. `request(id, op, params)` starts an operation and returns at
-/// once; its answer arrives in `inbox` under the same id (the host asks for a repaint). All
-/// operations are about the document that's open:
-///
-/// - `share.info` `{}` → `{name, signedIn, inCloud, canShare, account?, server?, link?}`; `link`
-///   when the document was opened from a shared link (its address), by someone who can't share it
-/// - `share.search` `{query}` → `[{label, detail?, type, shareWith}]`, `type` one of `user`,
-///   `group`, `email`, `remote`
-/// - `share.list` `{}` → `[{id, type, shareWith, label, edit, url?, password, expiration?}]`,
-///   `type` also `link`
-/// - `share.add` `{type, shareWith, edit, note}` → a share
-/// - `share.update` `{id, edit?, password?, expiration?}` → the share
-/// - `share.remove` `{id}` → `{}`
-/// - `share.link` `{edit, password?, expiration?}` → the link share (with `url`), made or updated
-/// - `share.upload` `{}` → info: puts a document that isn't in the cloud yet there (desktop)
-/// - `account.signIn` `{server}` → info: signs in to the cloud at that address (desktop)
-///
-/// With `files` (the desktop), the File view's operations too ([`crate::cloud_files`]):
-///
-/// - `account.info` `{}` → `{signedIn, account?, server?}`; `account.signOut` `{}` → the same
-/// - `files.list` `{path}` → `{path, items: [{name, path, folder, size}]}`
-/// - `files.open` `{path, openPaths}` → `{localPath, alreadyOpen?}`: a copy here, tied to the
-///   cloud file (open it like any file; saving it saves to the cloud)
-/// - `files.saveAs` `{folder, name, replace}` → `{localPath, name}` (save the document there; it
-///   goes to the cloud), or `{exists: true, name}`
-pub struct Cloud {
-    pub request: Box<dyn Fn(u64, &str, Json)>,
-    pub inbox: CloudInbox,
-    /// The File view can open and save cloud files (account, Open, Save As).
-    pub files: bool,
-    /// The cloud file a local file is the copy of (`folder/name.docx`), if it is one: such
-    /// documents AutoSave by default.
-    pub location: Option<Box<dyn Fn(&str) -> Option<String>>>,
-}
-
-impl Cloud {
-    /// A cloud for sharing only (the browser's: the page owns the files).
-    pub fn sharing(request: Box<dyn Fn(u64, &str, Json)>, inbox: CloudInbox) -> Cloud {
-        Cloud { request, inbox, files: false, location: None }
-    }
-
-    /// The cloud file `local` is the copy of, if any.
-    pub fn location_of(&self, local: &str) -> Option<String> {
-        self.location.as_ref().and_then(|f| f(local))
-    }
-}
-
-/// A request id no other cloud request in this app uses (answers share one inbox).
-pub fn next_request_id() -> u64 {
-    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
-    NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
-}
 
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]

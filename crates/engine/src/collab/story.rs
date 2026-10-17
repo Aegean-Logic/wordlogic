@@ -7,7 +7,9 @@ use std::sync::Arc;
 
 use wordcraft_doc::{Block, Blocks, CharProps};
 
-use super::delta::{Builder, Comp, Delta, Item, Map, apply_segs, attrs_json, diff_map, invert_segs, props_json, push_item, to_json};
+use super::delta::{
+    Builder, CellEdit, Comp, Delta, Item, Map, apply_segs, attrs_json, compose, diff_map, invert_segs, props_json, push_item, to_json,
+};
 use super::seq::{El, ParaAttrs, Seg, block_len, blocks_from_segs, push_els, push_segs};
 use super::{Error, Result};
 
@@ -18,7 +20,9 @@ pub(crate) fn story_len(blocks: &[Arc<Block>]) -> usize {
 
 /// The edit that turns story `old` into `new`.
 pub(crate) fn diff_story(old: &Blocks, new: &Blocks, revs: &Revs) -> Result<Delta> {
-    let same = |a: &Arc<Block>, b: &Arc<Block>| Arc::ptr_eq(a, b) || a == b;
+    // A revision changed meaning in place (a tracked cut pasted as a move): blocks that look the
+    // same may not be, so every block is compared unit by unit.
+    let same = |a: &Arc<Block>, b: &Arc<Block>| revs.aligned && (Arc::ptr_eq(a, b) || a == b);
     let mut pre = 0;
     while pre < old.len() && pre < new.len() && same(&old[pre], &new[pre]) {
         pre += 1;
@@ -34,7 +38,7 @@ pub(crate) fn diff_story(old: &Blocks, new: &Blocks, revs: &Revs) -> Result<Delt
         return Ok(out.done());
     }
     // Blocks the edit left alone in between (the same `Arc`, in order) split the rest into gaps.
-    let anchors = shared_blocks(om, nm);
+    let anchors = if revs.aligned { shared_blocks(om, nm) } else { Vec::new() };
     let (mut oi, mut ni) = (0, 0);
     for (ao, an) in anchors.into_iter().chain(std::iter::once((om.len(), nm.len()))) {
         diff_gap(&om[oi..ao], &nm[ni..an], revs, &mut out)?;
@@ -77,8 +81,11 @@ fn shared_blocks(old: &[Arc<Block>], new: &[Arc<Block>]) -> Vec<(usize, usize)> 
     out
 }
 
-/// The steps turning blocks `old` into `new`: the units they share at the start and the end stay
-/// (with any formatting change), the rest is deleted and inserted.
+/// The steps turning blocks `old` into `new`: the units they share stay (with any formatting
+/// change), the rest is deleted and inserted. Shared units are found at the start and the end,
+/// and in between by [`common_units`], so two edits in one paragraph (typed between two round
+/// trips, sent as one op) stay two small edits: replacing everything between them would take
+/// back what others did to the text in between (their bold, their typing there).
 fn diff_gap(old: &[Arc<Block>], new: &[Arc<Block>], revs: &Revs, out: &mut Builder) -> Result<()> {
     if old.is_empty() && new.is_empty() {
         return Ok(());
@@ -99,12 +106,87 @@ fn diff_gap(old: &[Arc<Block>], new: &[Arc<Block>], revs: &Revs, out: &mut Build
     for (a, b) in oe[..pre].iter().zip(&ne[..pre]) {
         change(a, b, &mut memo, out)?;
     }
-    out.delete(oe.len() - pre - suf);
-    out.push(Comp::Insert { items: items_of(&ne[pre..ne.len() - suf])? });
+    let (om, nm) = (&oe[pre..oe.len() - suf], &ne[pre..ne.len() - suf]);
+    let common = if om.is_empty() || nm.is_empty() { Vec::new() } else { common_units(om, nm).unwrap_or_default() };
+    let (mut oi, mut ni) = (0, 0);
+    for (ao, an) in common.into_iter().chain(std::iter::once((om.len(), nm.len()))) {
+        let (Some(dels), Some(ins)) = (om.get(oi..ao), nm.get(ni..an)) else { break };
+        out.delete(dels.len());
+        if !ins.is_empty() {
+            out.push(Comp::Insert { items: items_of(ins)? });
+        }
+        if let (Some(a), Some(b)) = (om.get(ao), nm.get(an)) {
+            change(a, b, &mut memo, out)?;
+        }
+        oi = ao + 1;
+        ni = an + 1;
+    }
     for (a, b) in oe[oe.len() - suf..].iter().zip(&ne[ne.len() - suf..]) {
         change(a, b, &mut memo, out)?;
     }
     Ok(())
+}
+
+/// The most units two stretches may differ by for [`common_units`] to align them, and the most
+/// work it does (units compared, roughly): past either, the stretch is replaced whole.
+const MAX_DIFF_EDITS: usize = 512;
+const MAX_DIFF_WORK: usize = 20_000_000;
+
+/// The units `a` and `b` share, in order, as (index in `a`, index in `b`) pairs: Myers' shortest
+/// edit script. `None` when they differ in too many units to be worth it ([`MAX_DIFF_EDITS`]).
+fn common_units(a: &[El<'_>], b: &[El<'_>]) -> Option<Vec<(usize, usize)>> {
+    let (n, m) = (a.len(), b.len());
+    let max = (n + m).min(MAX_DIFF_EDITS).min(MAX_DIFF_WORK / (n + m).max(1));
+    let (ni, mi) = (isize::try_from(n).ok()?, isize::try_from(m).ok()?);
+    let off = isize::try_from(max).ok()? + 1;
+    let at = |k: isize| usize::try_from(k + off).ok();
+    let mut v = vec![0isize; 2 * max + 3];
+    let mut trace: Vec<Vec<isize>> = Vec::new();
+    for d in 0..=isize::try_from(max).ok()? {
+        trace.push(v.clone());
+        let mut k = -d;
+        while k <= d {
+            let down = k == -d || (k != d && v.get(at(k - 1)?)? < v.get(at(k + 1)?)?);
+            let mut x = if down { *v.get(at(k + 1)?)? } else { v.get(at(k - 1)?)? + 1 };
+            let mut y = x - k;
+            while x < ni && y < mi && a.get(usize::try_from(x).ok()?)?.same_unit(b.get(usize::try_from(y).ok()?)?) {
+                x += 1;
+                y += 1;
+            }
+            *v.get_mut(at(k)?)? = x;
+            if x >= ni && y >= mi {
+                return backtrack(&trace, ni, mi, &at);
+            }
+            k += 2;
+        }
+    }
+    None
+}
+
+/// The matched pairs along the edit script [`common_units`] found (`trace`: its frontier before
+/// each step).
+fn backtrack(trace: &[Vec<isize>], n: isize, m: isize, at: &dyn Fn(isize) -> Option<usize>) -> Option<Vec<(usize, usize)>> {
+    let (mut x, mut y) = (n, m);
+    let mut out = Vec::new();
+    for (d, v) in trace.iter().enumerate().rev() {
+        let d = isize::try_from(d).ok()?;
+        let k = x - y;
+        let down = k == -d || (k != d && v.get(at(k - 1)?)? < v.get(at(k + 1)?)?);
+        let pk = if down { k + 1 } else { k - 1 };
+        let px = *v.get(at(pk)?)?;
+        let py = px - pk;
+        while x > px && y > py {
+            x -= 1;
+            y -= 1;
+            out.push((usize::try_from(x).ok()?, usize::try_from(y).ok()?));
+        }
+        if d > 0 {
+            x = px;
+            y = py;
+        }
+    }
+    out.reverse();
+    Some(out)
 }
 
 /// Each document's tracked-change revisions by value. Copies of a shared document number their
@@ -113,6 +195,9 @@ fn diff_gap(old: &[Arc<Block>], new: &[Arc<Block>], revs: &Revs, out: &mut Build
 pub(crate) struct Revs {
     old: Vec<u32>,
     new: Vec<u32>,
+    /// Both documents give the same revision the same number (one may have more): equal
+    /// formatting is then equal as it stands, the fast way.
+    aligned: bool,
 }
 
 impl Revs {
@@ -123,9 +208,15 @@ impl Revs {
             let n = u32::try_from(ids.len()).unwrap_or(u32::MAX);
             *ids.entry(key).or_insert(n)
         };
-        let old = old.iter().map(&mut id).collect();
-        let new = new.iter().map(&mut id).collect();
-        Revs { old, new }
+        let old: Vec<u32> = old.iter().map(&mut id).collect();
+        let new: Vec<u32> = new.iter().map(&mut id).collect();
+        let aligned = old.iter().zip(&new).all(|(a, b)| a == b);
+        Revs { old, new, aligned }
+    }
+
+    /// Both documents give each revision they share the same number.
+    pub fn aligned(&self) -> bool {
+        self.aligned
     }
 
     /// `b` as a patch over `a`: the keys whose values differ once revisions are compared by
@@ -152,7 +243,7 @@ impl PatchMemo<'_> {
         {
             return Ok(m.clone());
         }
-        let m = if a == b { Map::new() } else { self.revs.patch(&props_json(a)?, &props_json(b)?) };
+        let m = if self.revs.aligned && a == b { Map::new() } else { self.revs.patch(&props_json(a)?, &props_json(b)?) };
         self.last = Some((a, b, m.clone()));
         Ok(m)
     }
@@ -176,7 +267,7 @@ fn change(a: &El<'_>, b: &El<'_>, memo: &mut PatchMemo<'_>, out: &mut Builder) -
         }
         (El::End(pa), El::End(pb)) => {
             let (aa, ab) = (ParaAttrs::of(pa), ParaAttrs::of(pb));
-            if aa == ab {
+            if memo.revs.aligned && aa == ab {
                 out.retain(1);
             } else {
                 out.push(Comp::Para { p: memo.revs.patch(&attrs_json(&aa)?, &attrs_json(&ab)?) });
@@ -184,7 +275,21 @@ fn change(a: &El<'_>, b: &El<'_>, memo: &mut PatchMemo<'_>, out: &mut Builder) -
         }
         (El::Table(ta), El::Table(tb)) => {
             let wrap = |t: &wordcraft_doc::Table| -> Result<Map> { Ok(std::iter::once(("t".to_string(), to_json(t)?)).collect()) };
-            if ta == tb || memo.revs.patch(&wrap(ta)?, &wrap(tb)?).is_empty() {
+            if memo.revs.aligned && ta == tb {
+                out.retain(1);
+            } else if same_shape(ta, tb) {
+                // Only the cells' text changed: each cell's edit, merged with others' cell by cell.
+                let mut cells = Vec::new();
+                for (r, (ra, rb)) in ta.rows.iter().zip(&tb.rows).enumerate() {
+                    for (c, (ca, cb)) in ra.cells.iter().zip(&rb.cells).enumerate() {
+                        let delta = diff_story(&ca.blocks, &cb.blocks, memo.revs)?;
+                        if !delta.is_noop() {
+                            cells.push(CellEdit { row: r, col: c, delta });
+                        }
+                    }
+                }
+                out.push(Comp::Cells { cells });
+            } else if memo.revs.patch(&wrap(ta)?, &wrap(tb)?).is_empty() {
                 out.retain(1);
             } else {
                 out.push(Comp::Table { v: to_json(tb)? });
@@ -193,6 +298,20 @@ fn change(a: &El<'_>, b: &El<'_>, memo: &mut PatchMemo<'_>, out: &mut Builder) -
         _ => return Err(Error("co-editing: diff paired different kinds of unit".into())),
     }
     Ok(())
+}
+
+/// The same rows and cells with the same settings: only text inside cells differs.
+fn same_shape(a: &wordcraft_doc::Table, b: &wordcraft_doc::Table) -> bool {
+    a.props == b.props
+        && a.grid == b.grid
+        && a.controls == b.controls
+        && a.rows.len() == b.rows.len()
+        && a.rows.iter().zip(&b.rows).all(|(ra, rb)| {
+            ra.props == rb.props
+                && ra.controls == rb.controls
+                && ra.cells.len() == rb.cells.len()
+                && ra.cells.iter().zip(&rb.cells).all(|(ca, cb)| ca.props == cb.props && ca.controls == cb.controls)
+        })
 }
 
 /// Units as inserted items.
@@ -266,17 +385,44 @@ fn touched(blocks: &[Arc<Block>], delta: &Delta) -> Result<Option<(usize, usize,
 }
 
 /// Applies `delta` to a story.
-pub(crate) fn apply_story(blocks: &mut Blocks, delta: &Delta) -> Result<()> {
-    let Some((first, end, before)) = touched(blocks, delta)? else { return Ok(()) };
+///
+/// Returns the edit as applied: where what two people did at once left text without its
+/// paragraph mark (one deleted a paragraph, mark and all, while the other typed in it), or the
+/// story ending without a paragraph, applying it adds a plain mark, the same way on every copy.
+/// Those marks are part of the edit as applied, so later edits are placed after them.
+pub(crate) fn apply_story(blocks: &mut Blocks, delta: &Delta) -> Result<Delta> {
+    let Some((first, end, before)) = touched(blocks, delta)? else { return Ok(delta.clone()) };
     let mut segs = Vec::new();
     push_segs(&blocks[first..end], &mut segs);
-    let (lead, rest) = delta.split_lead();
-    let mut comps = vec![Comp::Retain { n: lead - before }];
-    comps.extend_from_slice(rest);
-    let segs = apply_segs(segs, &comps)?;
-    let fresh = blocks_from_segs(segs);
+    let mut comps = vec![Comp::Retain { n: delta.span().map_or(0, |(s, _)| s).saturating_sub(before) }];
+    comps.extend(delta.0.iter().skip_while(|c| matches!(c, Comp::Retain { .. })).cloned());
+    let (segs, applied) = apply_segs(segs, &comps)?;
+    let (fresh, added) = blocks_from_segs(segs);
     blocks.splice(first..end, fresh);
-    Ok(())
+    let mut applied = Builder::from(applied).done();
+    if !added.is_empty() {
+        let mut fix = Builder::default();
+        let mut prev = 0;
+        for q in added {
+            fix.retain(q.saturating_sub(prev));
+            fix.push(Comp::Insert { items: vec![plain_mark()?] });
+            prev = q;
+        }
+        applied = compose(&applied, &fix.done()).ok_or_else(|| Error("co-editing: an edit can't be applied here".into()))?;
+    }
+    let mut applied = applied.shifted(before);
+    if blocks.last().is_none_or(|b| matches!(**b, Block::Table(_))) {
+        let total = story_len(blocks);
+        blocks.push(wordcraft_doc::para_block(wordcraft_doc::Paragraph::new()));
+        let fix = Delta(vec![Comp::Retain { n: total }, Comp::Insert { items: vec![plain_mark()?] }]);
+        applied = compose(&applied, &fix).ok_or_else(|| Error("co-editing: an edit can't be applied here".into()))?;
+    }
+    Ok(applied)
+}
+
+/// A paragraph mark with no formatting.
+fn plain_mark() -> Result<Item> {
+    Ok(Item::End { a: attrs_json(&ParaAttrs::default())? })
 }
 
 /// The edit that takes `delta` back, given the story it was applied to.
@@ -304,6 +450,6 @@ pub(crate) fn story_items(blocks: &[Arc<Block>]) -> Result<Vec<Item>> {
 
 /// A story made of inserted items.
 pub(crate) fn story_from_items(items: &[Item]) -> Result<Blocks> {
-    let segs = apply_segs(Vec::new(), &[Comp::Insert { items: items.to_vec() }])?;
-    Ok(blocks_from_segs(segs))
+    let (segs, _) = apply_segs(Vec::new(), &[Comp::Insert { items: items.to_vec() }])?;
+    Ok(blocks_from_segs(segs).0)
 }

@@ -48,6 +48,7 @@ modules:
       - install -Dm755 target/release/wordcraft /app/bin/wordcraft
       - install -Dm755 target/release/wordcraft-cli /app/bin/wordcraft-cli
       - install -Dm644 packaging/linux/uk.co.aegeanlogic.wordlogic.desktop /app/share/applications/uk.co.aegeanlogic.wordlogic.desktop
+      - install -Dm644 packaging/linux/uk.co.aegeanlogic.wordlogic.links.desktop /app/share/applications/uk.co.aegeanlogic.wordlogic.links.desktop
       - install -Dm644 packaging/linux/uk.co.aegeanlogic.wordlogic.mime.xml /app/share/mime/packages/uk.co.aegeanlogic.wordlogic.xml
       - mkdir -p /app/share/icons && cp -R assets/app-icon/hicolor /app/share/icons/
       - >-

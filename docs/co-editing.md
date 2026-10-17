@@ -1,7 +1,7 @@
 # Real-time co-editing: design
 
-Status: engine (phase 1), browser transport (phase 2), presence (phase 3) and the Share dialog
-done, 2026-10-17. Fork-specific (WordLogic, Aegean Logic). Not upstream
+Status: engine (phase 1), browser transport (phase 2), presence (phase 3), the Share dialog and
+the desktop app joining sessions done, 2026-10-17. Fork-specific (WordLogic, Aegean Logic). Not upstream
 behaviour. Sibling of GridLogic's `docs/co-editing.md`: same server, same log protocol, a
 different merge for text.
 
@@ -44,16 +44,22 @@ joining paragraphs merge well:
 ### The delta (`collab/delta.rs`)
 
 Steps: keep `n`, insert items, delete `n`, patch the character formatting of `n`, patch a
-paragraph mark, replace an inline object, replace a table. With `transform` (TP1, deterministic
-tie-breaking by log order), `compose` (typing between two round trips goes as one op) and
-`invert` (undo). Payloads are JSON, so model fields added upstream travel without changes here.
+paragraph mark, replace an inline object, replace a table, or edit cells of a table whose rows,
+columns and their settings stay as they are (`Cells`: each cell's text as a story of its own, so
+two people typing in different cells, or the same one, merge like any text; a whole-table change
+made at the same moment wins). With `transform` (TP1, deterministic tie-breaking by log order),
+`compose` (one undo step for typing) and `invert` (undo). Payloads are JSON, so model fields added upstream travel without changes here.
 
 ### Diffing (`collab/story.rs`)
 
 Blocks an edit didn't touch are the same `Arc`s before and after (`Arc::make_mut`), so the diff
 skips them, aligns the untouched ones (longest increasing run), and diffs only the gaps, unit by
-unit (common start and end, formatting changes on what's kept). Only the blocks an op touches are
-taken apart and rebuilt when it's applied.
+unit: common start and end, then the shortest edit script in between (Myers, up to 512 units
+changed; past that the stretch is replaced), with formatting changes on what's kept. Edits made
+between two round trips go as one op diffed from what was last sent, so two edits in one paragraph
+must stay two small edits: replacing the text between them would take back what someone else did
+to it meanwhile (`tests::two_edits_in_one_paragraph_keep_what_others_did_between_them`). Only the
+blocks an op touches are taken apart and rebuilt when it's applied.
 
 ## 2. Ordering and convergence (`collab/replica.rs`)
 
@@ -63,17 +69,27 @@ Nextcloud sequencer is shared code):
 - Each op carries `base`, the last log position its author had applied. Log op `n` is rebased
   over entries `base+1 .. n-1` by every copy alike, so convergence only needs a deterministic
   `transform`.
-- Local edits are optimistic. A copy keeps `confirmed` (the document at its last log position),
-  its op in flight and the edits since. Someone else's op is transformed past the pending edits
-  and applied straight to what's shown; when this person's own op comes back after such a
-  shortcut, what's shown is rebuilt from `confirmed` + pending.
+- Local edits are optimistic, and **what the person sees is the truth for them**. A copy keeps
+  `confirmed` (the document at its last log position) and at most one op in flight; the next op
+  sent is the diff between what the server will have once that op is in (`assumed`) and what's
+  shown. All the edits made during a round trip go as one op, and whatever happened on the way
+  (an op that landed differently, one the server refused) is put right by the next one: nothing
+  typed is dropped. Someone else's op is transformed past the op in flight and the edits since,
+  and applied to what's shown.
+- The log keeps each op **as applied**. Where two edits at once leave text without its paragraph
+  mark (one deletes a paragraph, mark and all, while the other types in it, and a table follows),
+  applying adds a plain mark, the same way on every copy; the mark is part of the op as applied,
+  so later ops are placed after it.
+- Tracked changes compare by value: each copy numbers its revisions its own way, and a revision
+  changed in place (a tracked cut pasted as a move) makes the diff compare every block.
 - The caret and selection stay where they were through others' edits (`Delta::map_pos`); text
   someone types at your caret goes after it.
 - A copy missing log history must rejoin rather than guess.
 
 **Proof:** `collab::tests::copies_converge_whatever_the_timing`: random 3-person sessions (typing,
 Enter, Backspace/Delete across paragraphs, bold/italic/colour, alignment, bullets, numbering,
-headings, tables, comments, cut and paste, track changes, undo/redo) with random delivery timing;
+headings, tables and typing in their cells, comments, cut and paste, track changes and tracked
+moves, undo/redo) with random delivery timing;
 every copy ends with the same document and shows exactly what it has confirmed. In tests, every
 captured op is also checked to reproduce its edit exactly. Soak with
 `WORDCRAFT_COLLAB_SEEDS`/`WORDCRAFT_COLLAB_STEPS`; replay one with `WORDCRAFT_COLLAB_SEED`, which
@@ -116,8 +132,9 @@ back with a message. Opening another document in the same window ends sharing.
 
 ## 7. Accepted limits
 
-- **Tables merge whole.** Two people editing the same table at the same moment: the later change to
-  that table wins (edits elsewhere are unaffected). Cell-by-cell merging is the next step.
+- **Table structure wins over cell edits.** Adding or removing rows or columns, merging cells or
+  changing table, row or cell settings replaces the table: cell text someone typed in it at the
+  same moment goes. Otherwise cell text merges cell by cell (`tests::typing_in_different_cells_of_one_table`).
 - **An object changed twice at once** (the same picture resized by two people): the later wins.
 - **Revisions by value.** Two tracked changes with the same author, kind and timestamp (to the
   second) are one revision on other copies.
@@ -129,5 +146,46 @@ back with a message. Opening another document in the same window ends sharing.
 |---|---|
 | 2. Transport (done) | The web bridge (`apps/wordcraft-web/src/host.rs`, checked by `collab_msg.rs`): `wordcraft:collab:*` as in `packaging/web/README.md` § Co-editing and `../wordcraft-nextcloud` README § Protocol. Joining from a checkpoint's snapshot (`collab:start`'s `state`); checkpoints in the opened file's format with their snapshot; hidden tabs keep up (messages handled as they arrive) |
 | 3. Presence (done) | Others' carets (a bar in their colour with a name tag) and selections (a highlight in their colour) in the document (`crates/ui-egui/src/presence.rs`), kept with the text between reports; their initials in the title bar |
-| 4. Sharing and desktop | Done in the browser: the Share dialog (`crates/ui-egui/src/share.rs`, GridLogic's) through the page, and Open in Desktop App (`desktop=1`, `wordcraft:openDesktop`). Next: Nextcloud in the desktop app's File view, the `wordlogic://` scheme and desktop co-editing |
-| 5. Hardening | Cell-by-cell table merging; large-op caps tuned; performance on very long documents |
+| 4. Sharing and desktop (done) | The Share dialog (`crates/ui-egui/src/share.rs`, GridLogic's) through the page in the browser and through `apps/wordcraft/src/nextcloud.rs` on the desktop; Open in Desktop App in the browser (`desktop=1`, `wordcraft:openDesktop`); the desktop app below |
+| 5. Hardening | Row and column inserts that keep others' cell edits; large-op caps tuned; performance on very long documents |
+
+### The desktop app (phase 4)
+
+As in GridLogic (`../gridcraft`, `apps/gridcraft/src/nextcloud.rs`), adapted to one document per
+window:
+
+- **Nextcloud in the File view** (`apps/wordcraft/src/nextcloud.rs`, `crates/ui-egui/src/cloud_files.rs`).
+  File › Account signs in with Nextcloud's Login Flow v2; the app password goes to the system
+  keychain. File › Open and Save As browse Nextcloud over WebDAV, and Recent reopens a Nextcloud
+  document from Nextcloud. A document there is worked on as a copy in the cache folder, tied to the
+  Nextcloud file. AutoSave is on by default for it, as Word's is for OneDrive files, and each save
+  goes back with `If-Match` on the version it came from. If someone else changed the file, the user
+  chooses: Keep both, Use mine or Use Nextcloud's. The host's side of the UI is `cloud::Cloud`
+  (GridLogic's Share dialog `Cloud`, with `files` and `location`); the desktop also answers the
+  Share dialog's `share.*` operations through Nextcloud's sharing API.
+- **Co-editing** (`apps/wordcraft/src/nextcloud/coedit.rs`). A document opened from Nextcloud in a
+  format WordLogic saves in place (as the browser's editor co-edits) joins the file's session
+  through the same `/apps/wordcraft/collab/*` routes, with the app password; `OCS-APIRequest` takes
+  the calls through Nextcloud's CSRF check. The desktop downloads the file and joins pinned to its
+  ETag. When the checkpoint keeps a state snapshot (`hasState`, `GET collab/state`), it opens that
+  with `collab_load_snapshot` instead of the file, then catches up on the log. A worker thread then
+  does what `collab.js` does: it pushes ops one at a time, polls for everyone else's (sending this
+  person's `collab_presence` as `sel`), and writes checkpoints. The editor with the lowest client
+  id writes them every 20 entries or 30 seconds, and a Save here writes one (at most every 10 s,
+  as AutoSave saves often): the file, with `If-Match`, then `POST checkpoint` with
+  `state` (`collab::snapshot` of the confirmed document). While shared, Save and AutoSave don't
+  send the local copy; its record follows the session's saves, so reopening it later fetches
+  Nextcloud's version. A copy that can't follow the log (409, a refused op) reopens the current
+  file and rejoins. Opening another document in the window, or quitting, leaves the session.
+- **Open in Desktop App.** The browser's `wordlogic://open?server=…&path=…` link (the editor's
+  title bar with `desktop=1`, and the Files action) starts WordLogic with the link. The desktop
+  opens the file from that server, after signing in there if needed (File › Account comes up with
+  the address filled in). The scheme is registered by the Windows installer and on Linux (a hidden
+  `.links.desktop` entry taking `%u`). macOS doesn't handle it yet (it arrives as a `GetURL` Apple
+  event). There is no single instance: each link opens its own window, as each document does.
+- **Tested** against a fake Nextcloud on a local port (`nextcloud/fake_server.rs`, WebDAV plus
+  the sequencer): opening, saving back, conflicts, joining from a snapshot with an engine session
+  standing in for the browser, edits both ways, presence, checkpoints with snapshots, rejoining,
+  leaving, links. The File view is tested with a fake cloud (`crates/ui-egui/tests/cloud_files.rs`).
+- **Not yet:** others' carets on the desktop's page and the Share dialog come with the web
+  branch's presence painting and `share.rs`; until then the status bar says who joined or left.

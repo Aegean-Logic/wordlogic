@@ -8,7 +8,7 @@ use egui::vec2;
 use egui_kittest::kittest::Queryable;
 use serde_json::{Value as Json, json};
 use wordcraft_engine::Session;
-use wordcraft_ui_egui::share::{Cloud, CloudInbox};
+use wordcraft_ui_egui::cloud::{Cloud, CloudInbox};
 use wordcraft_ui_egui::{Services, WordApp};
 
 /// A cloud with a scripted state, recording every request.

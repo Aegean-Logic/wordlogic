@@ -28,6 +28,8 @@ pub mod backstage;
 pub mod canvas;
 pub mod caret_glide;
 pub mod chrome;
+pub mod cloud;
+pub mod cloud_files;
 pub mod colors;
 pub mod content_controls;
 pub mod control;
@@ -180,9 +182,9 @@ pub struct Services {
     /// `xdg-mime`. `None` (web, macOS) hides the button; macOS shows how to do it in Finder
     /// instead. An error means nothing changed.
     pub make_default_app: Option<Box<dyn Fn() -> Result<DefaultApp, String>>>,
-    /// The cloud the document can be shared through (Nextcloud): Share opens the Share dialog
-    /// ([`share`]) instead of exporting a copy.
-    pub cloud: Option<share::Cloud>,
+    /// The cloud documents can be opened from, saved to and shared through (Nextcloud): the File
+    /// view's Nextcloud places ([`cloud_files`]) and the Share dialog use it.
+    pub cloud: Option<cloud::Cloud>,
     /// Web: "Open in Desktop App": the page opens the document in WordLogic on this computer.
     pub open_in_desktop: Option<Box<dyn Fn()>>,
 }
@@ -566,6 +568,11 @@ pub struct WordApp {
     /// the session's document, no document is open: the window shows no page and only the File
     /// tab, Help and settings work. See [`WordApp::has_document`].
     no_document: Option<u64>,
+    /// Nextcloud in the File view (Account, Open, Save As, Recent).
+    pub cloud_files: cloud_files::CloudFiles,
+    /// Documents in Nextcloud (by [`Session::document_id`]) whose AutoSave was switched off; it's
+    /// on for the others, as in Word for documents in OneDrive.
+    pub cloud_autosave_off: std::collections::HashSet<u64>,
 }
 
 /// The answer to "Do you want to save changes?" (`ui.saveChanges`).
@@ -664,6 +671,8 @@ impl WordApp {
             info_editing: None,
             recovery_seen: false,
             no_document: None,
+            cloud_files: Default::default(),
+            cloud_autosave_off: Default::default(),
         }
     }
 
@@ -943,6 +952,13 @@ impl WordApp {
             && v.get("path").and_then(Value::as_str).map(std::path::Path::new) == self.session.path.as_deref()
         {
             self.autosave_path = self.session.path.clone();
+        }
+        // One more frame: the host may have more to do with the saved file (send it to Nextcloud).
+        if r.is_ok()
+            && matches!(id, "file.save" | "file.saveAs")
+            && let Some(ctx) = &ctx
+        {
+            ctx.request_repaint();
         }
         // A renamed file is the same file: AutoSave keeps covering it, and Recent drops the old name.
         if r.is_ok()
@@ -1852,6 +1868,8 @@ impl WordApp {
         self.poll_printing(ctx);
         self.drain_control(ctx);
         zotero::poll(self, ctx);
+        // The File view's Nextcloud requests: answers open or save the document.
+        cloud_files::poll(self);
         read_aloud::poll(self, ctx);
         self.clear_stale_change_picture();
         let _ = self.poll_file_dialog();
@@ -1962,15 +1980,29 @@ impl WordApp {
             let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
             return Some(AutoSaveBlock::Format { name });
         }
-        if !self.saved_here() {
+        // A copy of a Nextcloud file is saved to keep Nextcloud up to date, as Word's AutoSave does
+        // for documents in OneDrive.
+        if !self.saved_here() && self.cloud_location().is_none() {
             return Some(AutoSaveBlock::NotSavedHere);
         }
         None
     }
 
-    /// Whether AutoSave covers the document: it is on and nothing blocks it ([`Self::autosave_block`]).
+    /// Whether AutoSave covers the document: nothing blocks it ([`Self::autosave_block`]), and it
+    /// is on: by default for a document in Nextcloud (each can be switched off), and for the others
+    /// when the AutoSave setting is.
     pub fn autosaves(&self) -> bool {
-        self.autosave && self.autosave_block().is_none()
+        if self.autosave_block().is_some() {
+            return false;
+        }
+        if self.cloud_location().is_some() { !self.cloud_autosave_off.contains(&self.session.document_id()) } else { self.autosave }
+    }
+
+    /// Where the document is in Nextcloud (`folder/name.docx`), when it's a copy of a Nextcloud
+    /// file ([`Services::cloud`]).
+    pub fn cloud_location(&self) -> Option<String> {
+        let path = self.session.path.as_ref()?;
+        self.services.cloud.as_ref()?.location_of(&path.to_string_lossy())
     }
 
     /// `file.autosave` (the AutoSave switch, and scripts): `value` turns AutoSave on or off;
@@ -1980,6 +2012,16 @@ impl WordApp {
         let on = params.get("value").and_then(Value::as_bool).unwrap_or(!self.autosaves());
         if on && let Some(block) = self.autosave_block() {
             return Err(block.reason());
+        }
+        // A document in Nextcloud: its own switch, leaving the setting for other documents alone.
+        if self.cloud_location().is_some() {
+            let id = self.session.document_id();
+            if on {
+                self.cloud_autosave_off.remove(&id);
+            } else {
+                self.cloud_autosave_off.insert(id);
+            }
+            return Ok(json!({"value": on}));
         }
         self.autosave = on;
         self.session.autosave = on;
@@ -1994,7 +2036,13 @@ impl WordApp {
             if let Err(e) = self.session.run("file.save", &json!({})) {
                 log::warn!("AutoSave failed: {e}");
                 self.autosave_path = None;
+                if self.cloud_location().is_some() {
+                    self.cloud_autosave_off.insert(self.session.document_id());
+                }
                 self.status(i18n::fmt(tl!("AutoSave failed: {error}. Save the document to turn AutoSave back on."), &[("error", &e.to_string())]));
+            } else if let Some(ctx) = &self.ctx {
+                // One more frame: the host may have more to do with the saved file (Nextcloud).
+                ctx.request_repaint();
             }
         }
     }
@@ -2067,6 +2115,7 @@ impl WordApp {
         content_controls::popup(self, &ctx);
         dialogs::show(self, &ctx);
         share::show(self, &ctx);
+        cloud_files::show(self, &ctx);
         #[cfg(not(target_arch = "wasm32"))]
         file_browser::show(self, &ctx);
         colors::show(self, &ctx);

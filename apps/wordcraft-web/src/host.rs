@@ -77,7 +77,7 @@ use wasm_bindgen::JsCast as _;
 use wasm_bindgen::JsValue;
 use wasm_bindgen::closure::Closure;
 use wordcraft_ui_egui::async_saves::AsyncSaves;
-use wordcraft_ui_egui::share::{Cloud, CloudInbox};
+use wordcraft_ui_egui::cloud::{Cloud, CloudInbox};
 use wordcraft_ui_egui::{Inbox, Presence, Services, WordApp};
 
 use crate::acks::{self, Reply, SaveAcks};
