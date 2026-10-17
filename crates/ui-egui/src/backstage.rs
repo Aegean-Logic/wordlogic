@@ -1,4 +1,5 @@
-//! File tab (Backstage): Home/New, Open, Info, Save As, Print, Export, Close, Options, About.
+//! File tab (Backstage): Home/New, Open, Info, Save As, Print, Export, Close, Account
+//! (Nextcloud, desktop), Options, About.
 
 use egui::{Align2, Rect, Sense, Stroke, Ui, pos2, vec2};
 use serde_json::json;
@@ -6,7 +7,7 @@ use serde_json::json;
 use crate::theme::{APP_COLOR, Tokens, medium, regular, semibold};
 use crate::{WordApp, icons};
 
-const PAGES: [(&str, &str); 11] = [
+const PAGES: [(&str, &str); 12] = [
     ("home", "Home"),
     ("new", "New"),
     ("open", "Open"),
@@ -17,6 +18,8 @@ const PAGES: [(&str, &str); 11] = [
     ("print", "Print"),
     ("export", "Export"),
     ("close", "Close"),
+    // Nextcloud's account, where documents can be opened and saved there (desktop).
+    ("account", "Account"),
     ("options", "Options"),
 ];
 
@@ -70,7 +73,11 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                 app.canvas.want_focus = true;
             }
             ui.add_space(if mac { 12.0 } else { 6.0 });
+            let cloud = crate::cloud_files::available(app);
             for (id, label) in PAGES {
+                if id == "account" && !cloud {
+                    continue;
+                }
                 // No document open (#1129): Info, Save, Save As, Print and Export are greyed out.
                 let on = has_document || works_without_document(id);
                 let (r, resp) = ui.add_enabled_ui(on, |ui| ui.allocate_exact_size(vec2(200.0, 38.0), Sense::click())).inner;
@@ -152,6 +159,10 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                 "recover" => recovery_page(app, ui),
                 "print" | "export" => export_page(app, ui),
                 "options" => crate::options::page(app, ui),
+                "account" => {
+                    heading(ui, "Account");
+                    crate::cloud_files::account_page(app, ui);
+                }
                 _ => home_page(app, ui),
             });
         });
@@ -213,7 +224,7 @@ fn recovery_page(app: &mut WordApp, ui: &mut Ui) {
 
 /// The Backstage pages that work while no document is open (#1129).
 fn works_without_document(page: &str) -> bool {
-    matches!(page, "home" | "new" | "open" | "options")
+    matches!(page, "home" | "new" | "open" | "account" | "options")
 }
 
 fn heading(ui: &mut Ui, s: &str) {
@@ -347,6 +358,16 @@ fn open_list(app: &mut WordApp, ui: &mut Ui) {
         ui.label(egui::RichText::new(tl!("Documents you open will show up here.")).color(t.text_dim));
     }
     for p in app.ui.recent.iter().take(app.ui.recent_shown()).cloned().collect::<Vec<_>>() {
+        // A copy of a Nextcloud file shows where it is in Nextcloud, and reopens from there (the
+        // copy here may be behind, or the file may be being edited together).
+        if let Some(remote) = app.services.cloud.as_ref().filter(|c| c.files).and_then(|c| c.location_of(&p)) {
+            let name = remote.rsplit('/').next().unwrap_or(&remote).to_string();
+            let place = crate::i18n::fmt(tl!("Nextcloud › {path}"), &[("path", &remote)]);
+            if crate::cloud_files::row(ui, "printLayout", &name, Some(&place)).clicked() {
+                crate::cloud_files::open_remote(app, &remote);
+            }
+            continue;
+        }
         let name = std::path::Path::new(&p).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or(p.clone());
         let (r, resp) = ui.allocate_exact_size(vec2(ui.available_width().min(700.0), 40.0), Sense::click());
         if resp.hovered() {
@@ -378,6 +399,12 @@ fn open_page(app: &mut WordApp, ui: &mut Ui) {
     {
         let _ = app.run("ui.fileBrowser", json!({}));
     }
+    if crate::cloud_files::available(app) {
+        ui.add_space(22.0);
+        if crate::cloud_files::open_section(app, ui) {
+            app.ui.backstage_page = "account".into();
+        }
+    }
     ui.add_space(18.0);
     open_list(app, ui);
 }
@@ -388,6 +415,12 @@ fn save_as_page(app: &mut WordApp, ui: &mut Ui) {
     heading(ui, "Save As");
     if ui.button(egui::RichText::new(tl!("Browse…")).font(medium(14.0))).clicked() {
         app.save_as_dialog();
+    }
+    if crate::cloud_files::available(app) {
+        ui.add_space(22.0);
+        if crate::cloud_files::save_as_section(app, ui) {
+            app.ui.backstage_page = "account".into();
+        }
     }
 }
 
@@ -450,7 +483,9 @@ fn info_page(app: &mut WordApp, ui: &mut Ui) {
         for (l, k) in [("Pages", "pages"), ("Words", "words"), ("Paragraphs", "paragraphs"), ("Sections", "sections"), ("Comments", "comments")] {
             ui.label(format!("{}: {}", tl!(l), info.get(k).map(|v| v.to_string()).unwrap_or_default()));
         }
-        let path = info.get("path").and_then(|v| v.as_str()).unwrap_or(tl!("Not saved yet"));
+        // A copy of a Nextcloud file shows where it is in Nextcloud.
+        let cloud = app.cloud_location().map(|p| crate::i18n::fmt(tl!("Nextcloud › {path}"), &[("path", &p)]));
+        let path = cloud.as_deref().or_else(|| info.get("path").and_then(|v| v.as_str())).unwrap_or(tl!("Not saved yet"));
         ui.label(crate::i18n::fmt(tl!("Location: {path}"), &[("path", path)]));
     });
 }
