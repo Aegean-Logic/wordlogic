@@ -1,11 +1,10 @@
 <#
 .SYNOPSIS
-  Renders the Windows installer's branding: banner.svg and dialog.svg to banner.bmp and
-  dialog.bmp (24-bit, as Windows Installer dialogs need).
+  Renders the Windows installer's branding: banner.svg to banner.bmp (24-bit, as Windows
+  Installer dialogs need).
 
 .DESCRIPTION
-  Run after changing either SVG or the Aegean Logic brand files they use; commit the outputs.
-  wordcraft.wxs hands them to WixUI as WixUIBannerBmp and WixUIDialogBmp. Needs resvg
+  Run after changing banner.svg or the Aegean Logic brand files it uses; commit both. Needs resvg
   (cargo install resvg) and Windows (System.Drawing does the PNG to BMP step).
 
 .EXAMPLE
@@ -16,7 +15,7 @@ $here = $PSScriptRoot
 if (-not (Get-Command resvg -ErrorAction SilentlyContinue)) { throw 'resvg not found (cargo install resvg)' }
 Add-Type -AssemblyName System.Drawing
 
-foreach ($name in 'banner', 'dialog') {
+foreach ($name in 'banner') {
   $png = Join-Path ([IO.Path]::GetTempPath()) "wordlogic-$name.png"
   # Fonts come from the system (Segoe UI on Windows).
   & resvg --resources-dir $here (Join-Path $here "$name.svg") $png
@@ -26,7 +25,7 @@ foreach ($name in 'banner', 'dialog') {
     # Flattened onto 24-bit RGB: Windows Installer doesn't take alpha.
     $bmp = New-Object System.Drawing.Bitmap $source.Width, $source.Height, ([System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
     $g = [System.Drawing.Graphics]::FromImage($bmp)
-    $g.Clear([System.Drawing.Color]::White)
+    $g.Clear([System.Drawing.Color]::FromArgb(0x0A, 0x2A, 0x3B))
     $g.DrawImage($source, 0, 0, $source.Width, $source.Height)
     $g.Dispose()
     $bmp.Save((Join-Path $here "$name.bmp"), [System.Drawing.Imaging.ImageFormat]::Bmp)
