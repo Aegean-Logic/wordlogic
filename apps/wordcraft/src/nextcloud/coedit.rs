@@ -16,9 +16,10 @@ use std::time::Duration;
 
 use serde::Deserialize;
 use serde_json::{Value as Json, json};
+use wordcraft_doc::Pos;
 use wordcraft_engine::collab::{Incoming, Op};
 use wordcraft_engine::doc::Document;
-use wordcraft_ui_egui::WordApp;
+use wordcraft_ui_egui::{Presence, WordApp};
 
 use super::{Connection, State, encode, lock, mtime, persist, tie_key};
 
@@ -43,6 +44,9 @@ pub(super) struct Member {
     display_name: String,
     #[serde(default = "yes")]
     can_edit: bool,
+    /// Where they are, as their WordLogic sent it (`Session::collab_presence`, JSON text).
+    #[serde(default)]
+    selection: String,
 }
 
 fn yes() -> bool {
@@ -53,7 +57,24 @@ impl Member {
     fn name(&self) -> &str {
         if self.display_name.is_empty() { &self.user_id } else { &self.display_name }
     }
+
+    /// Their caret and selection (`{anchor, focus}`), if they sent one that reads.
+    fn position(&self) -> Option<(Pos, Pos)> {
+        #[derive(Deserialize)]
+        struct At {
+            anchor: Pos,
+            focus: Pos,
+        }
+        let at: At = serde_json::from_str(&self.selection).ok()?;
+        let ok = |p: &Pos| !p.path.0.is_empty() && p.path.0.len() <= MAX_PATH_LEN;
+        (ok(&at.anchor) && ok(&at.focus)).then_some((at.anchor, at.focus))
+    }
 }
+
+/// The deepest position taken from someone else (a paragraph in tables nested 20 deep).
+const MAX_PATH_LEN: usize = 64;
+/// The longest name drawn beside someone's caret.
+const MAX_NAME_CHARS: usize = 60;
 
 /// What joining gave: the session the downloaded file belongs to.
 #[derive(Clone, Debug)]
@@ -247,6 +268,7 @@ impl Coedit {
             worker: Some(handle),
         };
         c.say_who(app, &[]);
+        c.show_others(app);
         Ok(c)
     }
 
@@ -269,6 +291,7 @@ impl Coedit {
         if app.session.collab_client() == Some(self.client) {
             app.session.collab_stop();
         }
+        app.presence.clear();
     }
 
     /// Waits a moment for the worker to have left the session (when quitting).
@@ -318,6 +341,7 @@ impl Coedit {
         {
             let before = std::mem::replace(&mut self.members, m);
             self.say_who(app, &before);
+            self.show_others(app);
         }
         while let Some(out) = app.session.collab_outgoing() {
             let op = serde_json::to_string(&out.op).unwrap_or_else(|_| "{}".into());
@@ -333,6 +357,13 @@ impl Coedit {
         }
         self.maybe_checkpoint(app, now, just_saved);
         Status::Going
+    }
+
+    /// Where the others are, drawn on the page in their colours with their names, as in the
+    /// browser (the colours are the page's).
+    fn show_others(&self, app: &mut WordApp) {
+        let people = others_on_the_page(&self.members, self.client);
+        app.set_presence(people);
     }
 
     /// Who came and went, on the status bar.
@@ -577,6 +608,19 @@ impl Worker {
     }
 }
 
+/// The members other than `me` whose position reads, for [`WordApp::set_presence`].
+fn others_on_the_page(members: &[Member], me: u64) -> Vec<(Presence, Pos, Pos)> {
+    members
+        .iter()
+        .filter(|m| m.client != me)
+        .filter_map(|m| {
+            let (anchor, focus) = m.position()?;
+            let name = m.name().chars().filter(|c| !c.is_control()).take(MAX_NAME_CHARS).collect();
+            Some((Presence { client: m.client, name, color: wordcraft_ui_egui::presence::color_for(m.client) }, anchor, focus))
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -599,5 +643,24 @@ mod tests {
                 .unwrap();
         assert_eq!((m[0].name(), m[0].can_edit), ("ana", false));
         assert_eq!((m[1].name(), m[1].can_edit), ("Bo Lee", true));
+    }
+
+    #[test]
+    fn the_others_are_drawn_from_their_selections() {
+        let sel =
+            |off: usize| json!({"anchor": {"story": "body", "path": [0], "off": 0}, "focus": {"story": "body", "path": [1], "off": off}}).to_string();
+        let m: Vec<Member> = serde_json::from_value(json!([
+            {"client": 1, "userId": "me", "selection": sel(1)},
+            {"client": 2, "userId": "ana", "displayName": "Ana Lopez", "selection": sel(4)},
+            {"client": 3, "userId": "bo", "selection": "garbled"},
+            {"client": 4, "userId": "cy"}
+        ]))
+        .unwrap();
+        let others = others_on_the_page(&m, 1);
+        assert_eq!(others.len(), 1, "not me, and only who sent a position that reads");
+        let (p, anchor, focus) = &others[0];
+        assert_eq!((p.client, p.name.as_str()), (2, "Ana Lopez"));
+        assert_eq!(p.color, wordcraft_ui_egui::presence::color_for(2));
+        assert_eq!((anchor, focus), (&Pos::body(0, 0), &Pos::body(1, 4)));
     }
 }

@@ -104,6 +104,24 @@ fn text_on(bg: Color32) -> Color32 {
     if luma > 160.0 { Color32::from_gray(20) } else { Color32::WHITE }
 }
 
+/// The colour a person in a session is drawn in, by client id: the colours of
+/// `wordcraft-nextcloud`'s `colorFor` (`src/collab.js`), so the browser's list of who's editing
+/// and every WordLogic, browser or desktop, agree.
+pub fn color_for(client: u64) -> Color32 {
+    const COLORS: [[u8; 3]; 8] = [
+        [0xC0, 0x39, 0x2B],
+        [0x1F, 0x6F, 0xB2],
+        [0x8E, 0x44, 0xAD],
+        [0xB9, 0x77, 0x0E],
+        [0x14, 0x8F, 0x77],
+        [0xAD, 0x14, 0x57],
+        [0x2E, 0x7D, 0x32],
+        [0x6D, 0x4C, 0x41],
+    ];
+    let [r, g, b] = COLORS.get(usize::try_from(client.saturating_sub(1) % 8).unwrap_or(0)).copied().unwrap_or(COLORS[0]);
+    Color32::from_rgb(r, g, b)
+}
+
 /// A person's initials: the first letters of their first and last names.
 pub fn initials(name: &str) -> String {
     let parts: Vec<&str> = name.split_whitespace().collect();
@@ -127,6 +145,14 @@ mod tests {
 
     fn person(client: u64, name: &str) -> Presence {
         Presence { client, name: name.into(), color: Color32::from_rgb(0x1F, 0x6F, 0xB2) }
+    }
+
+    #[test]
+    fn colours_follow_the_page() {
+        assert_eq!(color_for(1), Color32::from_rgb(0xC0, 0x39, 0x2B));
+        assert_eq!(color_for(2), Color32::from_rgb(0x1F, 0x6F, 0xB2));
+        assert_eq!(color_for(9), color_for(1));
+        assert_eq!(color_for(0), color_for(1), "no client 0, but no panic either");
     }
 
     #[test]

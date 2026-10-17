@@ -258,6 +258,15 @@ fn co_editing_with_the_browser_from_a_state_snapshot() {
         server.data().session_of(path).unwrap().members.iter().any(|m| m.0 == desktop && m.2.contains("anchor"))
     });
 
+    // The browser's caret reaches the desktop: drawn on the page in the page's colour for it,
+    // with its name.
+    let at = browser.s.collab_presence().to_string();
+    server.data().session_of(path).unwrap().members.iter_mut().filter(|m| m.0 == 1).for_each(|m| m.2 = at.clone());
+    until(&mut nc, &mut app, &ctx, "the browser's caret on the desktop", |app| !app.presence.is_empty());
+    assert_eq!(app.presence[0].name, "Bo Lee");
+    assert_eq!(app.presence[0].color, wordcraft_ui_egui::presence::color_for(1));
+    assert_eq!(app.session.collab_others()[0].focus, browser.s.sel.focus);
+
     // Save writes a checkpoint: the file, and the snapshot of the shared document beside it.
     until(&mut nc, &mut app, &ctx, "the last edit confirmed", |app| !app.session.collab_pending());
     let typed = app.session.collab_seq().unwrap();
