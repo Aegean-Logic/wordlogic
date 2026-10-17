@@ -16,7 +16,7 @@ mod seq;
 mod shared;
 mod story;
 
-pub use delta::{Comp, Delta, Item, compose, transform};
+pub use delta::{CellEdit, Comp, Delta, Item, compose, transform};
 pub use fields::Fields;
 pub use replica::{Incoming, Outgoing, Replica, Shown};
 pub(crate) use shared::{Shared, run_shared};
@@ -101,13 +101,13 @@ impl Op {
 pub fn capture(before: &Document, after: &Document) -> Result<Op> {
     let revs_ctx = story::Revs::new(&before.revisions, &after.revisions);
     let mut op = Op::default();
-    if !same_blocks(&before.body, &after.body) {
+    if !revs_ctx.aligned() || !same_blocks(&before.body, &after.body) {
         push_story(&mut op, StoryRef::Body, story::diff_story(&before.body, &after.body, &revs_ctx)?);
     }
     for (id, pb) in &after.parts {
         match before.parts.get(id) {
             Some(pa) => {
-                if !same_blocks(&pa.blocks, &pb.blocks) {
+                if !revs_ctx.aligned() || !same_blocks(&pa.blocks, &pb.blocks) {
                     push_story(&mut op, StoryRef::Part(*id), story::diff_story(&pa.blocks, &pb.blocks, &revs_ctx)?);
                 }
             }
@@ -143,12 +143,13 @@ fn same_blocks(a: &wordcraft_doc::Blocks, b: &wordcraft_doc::Blocks) -> bool {
 }
 
 /// Applies `op` to `doc`. On an error `doc` may be half changed: apply to a copy.
-pub fn apply(doc: &mut Document, op: &Op) -> Result<()> {
+pub fn apply(doc: &mut Document, op: &Op) -> Result<Op> {
+    let given = op;
     let mut op = op.clone();
+    let mut map: Vec<u32> = Vec::new();
     // The op's revisions get this document's numbers (the same revision keeps its number). A
     // number the op doesn't define names no revision here either.
     if has_payloads(&op) {
-        let mut map = Vec::with_capacity(op.revs.len());
         for r in &op.revs {
             let rev: Revision = serde_json::from_value(r.clone()).unwrap_or_default();
             let at = match doc.revisions.iter().position(|x| *x == rev) {
@@ -169,16 +170,25 @@ pub fn apply(doc: &mut Document, op: &Op) -> Result<()> {
         let blocks = story::story_from_items(&p.items)?;
         doc.parts.insert(p.id, Part { kind: p.kind, blocks, body: p.body });
     }
+    let mut applied = Vec::with_capacity(op.stories.len());
     for e in &op.stories {
         let blocks = doc.story_mut(e.story).map_err(|_| Error(format!("co-editing: no story {:?}", e.story)))?;
-        story::apply_story(blocks, &e.delta)?;
+        applied.push(StoryEdit { story: e.story, delta: story::apply_story(blocks, &e.delta)? });
     }
     fields::apply_fields(doc, &op.fields)?;
     for id in &op.removed {
         doc.parts.remove(id);
     }
     doc.ensure_nonempty();
-    Ok(())
+    // The op as applied, in its own revision numbers.
+    let mut out = Op { stories: applied, ..given.clone() };
+    if !map.is_empty() {
+        let back: std::collections::HashMap<u32, u32> = map.iter().enumerate().map(|(i, d)| (*d, u32::try_from(i).unwrap_or(u32::MAX))).collect();
+        for e in &mut out.stories {
+            comps_payloads(&mut e.delta.0, &mut |m| remap_revs(m, &mut |i| back.get(&i).copied().unwrap_or(u32::MAX)));
+        }
+    }
+    Ok(out)
 }
 
 fn has_payloads(op: &Op) -> bool {
@@ -286,35 +296,45 @@ pub fn compose_ops(a: &Op, b: &Op) -> Option<Op> {
 
 /// Runs `f` on every JSON payload of `op` that can name revisions.
 fn for_each_payload(op: &mut Op, f: &mut dyn FnMut(&mut Map)) {
-    let items = |items: &mut Vec<Item>, f: &mut dyn FnMut(&mut Map)| {
-        for it in items {
-            match it {
-                Item::Text { p, .. } => f(p),
-                Item::Obj { o, p } => {
-                    f(p);
-                    json_maps(o, f);
-                }
-                Item::End { a } => f(a),
-                Item::Table { v } => json_maps(v, f),
-            }
-        }
-    };
     for p in &mut op.added {
-        items(&mut p.items, f);
+        items_payloads(&mut p.items, f);
     }
     for e in &mut op.stories {
-        for c in &mut e.delta.0 {
-            match c {
-                Comp::Insert { items: its } => items(its, f),
-                Comp::Format { p, .. } | Comp::Para { p } => f(p),
-                Comp::Obj { o } => json_maps(o, f),
-                Comp::Table { v } => json_maps(v, f),
-                Comp::Retain { .. } | Comp::Delete { .. } => {}
-            }
-        }
+        comps_payloads(&mut e.delta.0, f);
     }
     for m in fields::payloads_mut(&mut op.fields) {
         f(m);
+    }
+}
+
+fn items_payloads(items: &mut [Item], f: &mut dyn FnMut(&mut Map)) {
+    for it in items {
+        match it {
+            Item::Text { p, .. } => f(p),
+            Item::Obj { o, p } => {
+                f(p);
+                json_maps(o, f);
+            }
+            Item::End { a } => f(a),
+            Item::Table { v } => json_maps(v, f),
+        }
+    }
+}
+
+fn comps_payloads(comps: &mut [Comp], f: &mut dyn FnMut(&mut Map)) {
+    for c in comps {
+        match c {
+            Comp::Insert { items } => items_payloads(items, f),
+            Comp::Format { p, .. } | Comp::Para { p } => f(p),
+            Comp::Obj { o } => json_maps(o, f),
+            Comp::Table { v } => json_maps(v, f),
+            Comp::Cells { cells } => {
+                for cell in cells {
+                    comps_payloads(&mut cell.delta.0, f);
+                }
+            }
+            Comp::Retain { .. } | Comp::Delete { .. } => {}
+        }
     }
 }
 

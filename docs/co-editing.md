@@ -43,9 +43,11 @@ joining paragraphs merge well:
 ### The delta (`collab/delta.rs`)
 
 Steps: keep `n`, insert items, delete `n`, patch the character formatting of `n`, patch a
-paragraph mark, replace an inline object, replace a table. With `transform` (TP1, deterministic
-tie-breaking by log order), `compose` (typing between two round trips goes as one op) and
-`invert` (undo). Payloads are JSON, so model fields added upstream travel without changes here.
+paragraph mark, replace an inline object, replace a table, or edit cells of a table whose rows,
+columns and their settings stay as they are (`Cells`: each cell's text as a story of its own, so
+two people typing in different cells, or the same one, merge like any text; a whole-table change
+made at the same moment wins). With `transform` (TP1, deterministic tie-breaking by log order),
+`compose` (one undo step for typing) and `invert` (undo). Payloads are JSON, so model fields added upstream travel without changes here.
 
 ### Diffing (`collab/story.rs`)
 
@@ -62,17 +64,27 @@ Nextcloud sequencer is shared code):
 - Each op carries `base`, the last log position its author had applied. Log op `n` is rebased
   over entries `base+1 .. n-1` by every copy alike, so convergence only needs a deterministic
   `transform`.
-- Local edits are optimistic. A copy keeps `confirmed` (the document at its last log position),
-  its op in flight and the edits since. Someone else's op is transformed past the pending edits
-  and applied straight to what's shown; when this person's own op comes back after such a
-  shortcut, what's shown is rebuilt from `confirmed` + pending.
+- Local edits are optimistic, and **what the person sees is the truth for them**. A copy keeps
+  `confirmed` (the document at its last log position) and at most one op in flight; the next op
+  sent is the diff between what the server will have once that op is in (`assumed`) and what's
+  shown. All the edits made during a round trip go as one op, and whatever happened on the way
+  (an op that landed differently, one the server refused) is put right by the next one: nothing
+  typed is dropped. Someone else's op is transformed past the op in flight and the edits since,
+  and applied to what's shown.
+- The log keeps each op **as applied**. Where two edits at once leave text without its paragraph
+  mark (one deletes a paragraph, mark and all, while the other types in it, and a table follows),
+  applying adds a plain mark, the same way on every copy; the mark is part of the op as applied,
+  so later ops are placed after it.
+- Tracked changes compare by value: each copy numbers its revisions its own way, and a revision
+  changed in place (a tracked cut pasted as a move) makes the diff compare every block.
 - The caret and selection stay where they were through others' edits (`Delta::map_pos`); text
   someone types at your caret goes after it.
 - A copy missing log history must rejoin rather than guess.
 
 **Proof:** `collab::tests::copies_converge_whatever_the_timing`: random 3-person sessions (typing,
 Enter, Backspace/Delete across paragraphs, bold/italic/colour, alignment, bullets, numbering,
-headings, tables, comments, cut and paste, track changes, undo/redo) with random delivery timing;
+headings, tables and typing in their cells, comments, cut and paste, track changes and tracked
+moves, undo/redo) with random delivery timing;
 every copy ends with the same document and shows exactly what it has confirmed. In tests, every
 captured op is also checked to reproduce its edit exactly. Soak with
 `WORDCRAFT_COLLAB_SEEDS`/`WORDCRAFT_COLLAB_STEPS`; replay one with `WORDCRAFT_COLLAB_SEED`, which
@@ -112,8 +124,9 @@ back with a message. Opening another document in the same window ends sharing.
 
 ## 7. Accepted limits
 
-- **Tables merge whole.** Two people editing the same table at the same moment: the later change to
-  that table wins (edits elsewhere are unaffected). Cell-by-cell merging is the next step.
+- **Table structure wins over cell edits.** Adding or removing rows or columns, merging cells or
+  changing table, row or cell settings replaces the table: cell text someone typed in it at the
+  same moment goes. Otherwise cell text merges cell by cell (`tests::typing_in_different_cells_of_one_table`).
 - **An object changed twice at once** (the same picture resized by two people): the later wins.
 - **Revisions by value.** Two tracked changes with the same author, kind and timestamp (to the
   second) are one revision on other copies.
@@ -126,4 +139,4 @@ back with a message. Opening another document in the same window ends sharing.
 | 2. Transport | Bridge messages in `apps/wordcraft-web` (`wordcraft:collab*`, as in `../wordcraft-nextcloud` README § Protocol); checkpoint writer with snapshot |
 | 3. Presence | Others' carets and selections with names and colours; who's editing |
 | 4. Sharing and desktop | Share dialog through Nextcloud; Nextcloud in the desktop app's File view; Open in Desktop App (`wordlogic://`) |
-| 5. Hardening | Cell-by-cell table merging; large-op caps tuned; performance on very long documents |
+| 5. Hardening | Row and column inserts that keep others' cell edits; large-op caps tuned; performance on very long documents |

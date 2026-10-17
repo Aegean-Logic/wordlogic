@@ -119,13 +119,13 @@ impl Session {
 
     /// This person has edits the server hasn't confirmed.
     pub fn collab_pending(&self) -> bool {
-        self.collab.as_ref().is_some_and(|c| c.replica.has_pending())
+        self.collab.as_ref().is_some_and(|c| c.replica.has_pending(&self.doc))
     }
 
     /// The next op to send to the server (one at a time: the next once this one comes back).
     pub fn collab_outgoing(&mut self) -> Option<Outgoing> {
         self.collab_flush();
-        self.collab.as_mut().and_then(|c| c.replica.outgoing())
+        self.collab.as_mut().and_then(|c| c.replica.outgoing(&self.doc))
     }
 
     /// The server refused the op in flight for good: drop it here too.

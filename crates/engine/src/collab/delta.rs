@@ -77,6 +77,19 @@ pub enum Comp {
     /// Replace a table.
     #[serde(rename = "b")]
     Table { v: Json },
+    /// Edit cells of a table whose rows, columns and their settings stay as they are, each cell's
+    /// text as a story of its own: two people typing in different cells both keep theirs. A
+    /// whole-table change ([`Comp::Table`]) made at the same moment wins.
+    #[serde(rename = "c")]
+    Cells { cells: Vec<CellEdit> },
+}
+
+/// One cell's edit in a [`Comp::Cells`].
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CellEdit {
+    pub row: usize,
+    pub col: usize,
+    pub delta: Delta,
 }
 
 impl Comp {
@@ -85,7 +98,7 @@ impl Comp {
         match self {
             Comp::Retain { n } | Comp::Delete { n } | Comp::Format { n, .. } => *n,
             Comp::Insert { .. } => 0,
-            Comp::Para { .. } | Comp::Obj { .. } | Comp::Table { .. } => 1,
+            Comp::Para { .. } | Comp::Obj { .. } | Comp::Table { .. } | Comp::Cells { .. } => 1,
         }
     }
     /// Units of the new sequence it makes (0 for a delete).
@@ -94,7 +107,7 @@ impl Comp {
             Comp::Retain { n } | Comp::Format { n, .. } => *n,
             Comp::Insert { items } => items.iter().map(Item::len).sum(),
             Comp::Delete { .. } => 0,
-            Comp::Para { .. } | Comp::Obj { .. } | Comp::Table { .. } => 1,
+            Comp::Para { .. } | Comp::Obj { .. } | Comp::Table { .. } | Comp::Cells { .. } => 1,
         }
     }
     fn is_insert(&self) -> bool {
@@ -207,6 +220,7 @@ impl Builder {
             Comp::Insert { items } if items.is_empty() => return,
             Comp::Format { p, n } if p.is_empty() => return self.retain(*n),
             Comp::Para { p } if p.is_empty() => return self.retain(1),
+            Comp::Cells { cells } if cells.iter().all(|c| c.delta.is_noop()) => return self.retain(1),
             _ => {}
         }
         // An insert goes before a delete at the same place (the same result, one shape).
@@ -289,7 +303,8 @@ struct Iter {
 
 impl Iter {
     fn new(comps: &[Comp]) -> Iter {
-        Iter { comps: comps.iter().cloned().collect() }
+        // Empty steps (a keep of nothing) would stall the walk: they change nothing anyway.
+        Iter { comps: comps.iter().filter(|c| c.input_len() > 0 || c.output_len() > 0).cloned().collect() }
     }
     fn has(&self) -> bool {
         !self.comps.is_empty()
@@ -404,10 +419,34 @@ pub fn transform(a: &Delta, b: &Delta, a_first: bool) -> Delta {
             (Comp::Format { n, p }, Comp::Format { p: q, .. }) => out.push(Comp::Format { n, p: if a_first { minus_keys(&p, &q) } else { p } }),
             (Comp::Para { p }, Comp::Para { p: q }) => out.push(Comp::Para { p: if a_first { minus_keys(&p, &q) } else { p } }),
             (Comp::Obj { .. }, Comp::Obj { .. }) | (Comp::Table { .. }, Comp::Table { .. }) if a_first => out.retain(1),
+            (Comp::Cells { cells }, Comp::Cells { cells: theirs }) => {
+                let cells = cells
+                    .into_iter()
+                    .map(|c| match theirs.iter().find(|t| t.row == c.row && t.col == c.col) {
+                        Some(t) => CellEdit { delta: transform(&c.delta, &t.delta, a_first), ..c },
+                        None => c,
+                    })
+                    .collect();
+                out.push(Comp::Cells { cells });
+            }
+            // A whole-table change wins over cell edits, whichever came first.
+            (Comp::Cells { .. }, Comp::Table { .. }) => out.retain(1),
             (c, _) => out.push(c),
         }
     }
     out.done()
+}
+
+/// Cell edits `a` then `b`, or `None` when a cell's two can't be put together.
+fn compose_cells(a: Vec<CellEdit>, b: Vec<CellEdit>) -> Option<Vec<CellEdit>> {
+    let mut out = a;
+    for e in b {
+        match out.iter_mut().find(|c| c.row == e.row && c.col == e.col) {
+            Some(c) => c.delta = compose(&c.delta, &e.delta)?,
+            None => out.push(e),
+        }
+    }
+    Some(out)
 }
 
 /// `a` then `b` as one edit, or `None` when one step can't say both (an object replaced and
@@ -441,7 +480,8 @@ pub fn compose(a: &Delta, b: &Delta) -> Option<Delta> {
             (Comp::Format { n, p }, Comp::Format { p: q, .. }) => out.push(Comp::Format { n, p: merge(&p, &q) }),
             (Comp::Para { p }, Comp::Para { p: q }) => out.push(Comp::Para { p: merge(&p, &q) }),
             (Comp::Obj { .. }, Comp::Obj { o }) => out.push(Comp::Obj { o }),
-            (Comp::Table { .. }, Comp::Table { v }) => out.push(Comp::Table { v }),
+            (Comp::Table { .. } | Comp::Cells { .. }, Comp::Table { v }) => out.push(Comp::Table { v }),
+            (Comp::Cells { cells: a }, Comp::Cells { cells: b }) => out.push(Comp::Cells { cells: compose_cells(a, b)? }),
             _ => return None,
         }
     }
@@ -556,11 +596,18 @@ fn item_seg(it: &Item) -> Result<Seg> {
 }
 
 /// Applies steps to segments (the old sequence; anything after the steps is kept).
-pub(crate) fn apply_segs(segs: Vec<Seg>, comps: &[Comp]) -> Result<Vec<Seg>> {
+///
+/// Also returns the steps as applied: the same, except that cell edits include the paragraph
+/// marks applying them added ([`super::story::apply_story`]).
+pub(crate) fn apply_segs(segs: Vec<Seg>, comps: &[Comp]) -> Result<(Vec<Seg>, Vec<Comp>)> {
     let short = || Error("co-editing: an edit runs past the end of the text".into());
     let mut src = SegCursor::new(segs);
     let mut out = Vec::new();
+    let mut applied = Vec::with_capacity(comps.len());
     for c in comps {
+        if !matches!(c, Comp::Cells { .. }) {
+            applied.push(c.clone());
+        }
         match c {
             Comp::Retain { n } => out.extend(src.take(*n).ok_or_else(short)?),
             Comp::Insert { items } => {
@@ -596,10 +643,27 @@ pub(crate) fn apply_segs(segs: Vec<Seg>, comps: &[Comp]) -> Result<Vec<Seg>> {
                 Some(Seg::Table(_)) => out.push(Seg::Table(from_json(v.clone(), "table")?)),
                 _ => return Err(Error("co-editing: a table change for something not a table".into())),
             },
+            Comp::Cells { cells } => match src.take(1).ok_or_else(short)?.pop() {
+                Some(Seg::Table(mut t)) => {
+                    let mut done = Vec::with_capacity(cells.len());
+                    for e in cells {
+                        let cell = t
+                            .rows
+                            .get_mut(e.row)
+                            .and_then(|r| r.cells.get_mut(e.col))
+                            .ok_or_else(|| Error("co-editing: an edit for a cell the table doesn't have".into()))?;
+                        let delta = super::story::apply_story(&mut cell.blocks, &e.delta)?;
+                        done.push(CellEdit { row: e.row, col: e.col, delta });
+                    }
+                    applied.push(Comp::Cells { cells: done });
+                    out.push(Seg::Table(t));
+                }
+                _ => return Err(Error("co-editing: a table change for something not a table".into())),
+            },
         }
     }
     out.extend(src.rest());
-    Ok(out)
+    Ok((out, applied))
 }
 
 fn patched(props: &wordcraft_doc::CharProps, p: &Map) -> Result<wordcraft_doc::CharProps> {
@@ -646,6 +710,21 @@ pub(crate) fn invert_segs(segs: Vec<Seg>, comps: &[Comp]) -> Result<Vec<Comp>> {
             },
             Comp::Table { .. } => match src.take(1).ok_or_else(short)?.pop() {
                 Some(Seg::Table(t)) => out.push(Comp::Table { v: to_json(&t)? }),
+                _ => return Err(Error("co-editing: a table change for something not a table".into())),
+            },
+            Comp::Cells { cells } => match src.take(1).ok_or_else(short)?.pop() {
+                Some(Seg::Table(t)) => {
+                    let mut back = Vec::with_capacity(cells.len());
+                    for e in cells {
+                        let cell = t
+                            .rows
+                            .get(e.row)
+                            .and_then(|r| r.cells.get(e.col))
+                            .ok_or_else(|| Error("co-editing: an edit for a cell the table doesn't have".into()))?;
+                        back.push(CellEdit { row: e.row, col: e.col, delta: super::story::invert_story(&cell.blocks, &e.delta)? });
+                    }
+                    out.push(Comp::Cells { cells: back });
+                }
                 _ => return Err(Error("co-editing: a table change for something not a table".into())),
             },
         }
