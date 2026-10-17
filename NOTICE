@@ -1,9 +1,12 @@
-WordCraft
+WordLogic
+Copyright (c) 2026 Aegean Logic.
+
+WordLogic is based on WordCraft by the ArtCraft team:
 Copyright (c) 2026 ArtCraft Team and the WordCraft contributors.
 Licensed under the MIT License or the Apache License, Version 2.0, at your option
 (LICENSE-MIT, LICENSE-APACHE).
 
-The ArtCraft name, wordmark and logos in docs/brand/ are trademarks of the ArtCraft Team. They are
+The Aegean Logic name, wordmark and logos in docs/brand/ are trademarks of Aegean Logic. They are
 not open source and are not covered by the license above; their terms are in
 docs/brand/LICENSE-brand.txt.
 
@@ -81,6 +84,6 @@ The craft-pdf writer and Krilla 0.8.2 backend are pinned to storytold/craft-libs
 c3487320b2d1de657b860b3c8abb44e1f2b32bd8. The backend retains its MIT OR Apache-2.0 licensing
 and upstream bundled material; see that revision's licenses/pdf-writer/ and ATTRIBUTION.md.
 The backend patch prevents finalization during an unwind and rejects a writer after failed
-cleanup. WordCraft enables only writing; PDF import and its image decoders are not enabled.
+cleanup. WordLogic enables only writing; PDF import and its image decoders are not enabled.
 
 No Microsoft, Adobe, Avid or Autodesk icons, images, templates or artwork are included.

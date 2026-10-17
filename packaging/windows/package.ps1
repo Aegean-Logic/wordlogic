@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Build, sign and package WordCraft for Windows.
+  Build, sign and package WordLogic for Windows.
 
 .DESCRIPTION
   Produces, in $env:DIST (default: dist/release):
@@ -12,7 +12,7 @@
   warning when no signing secrets are set).
 
   Needs: Rust (MSVC toolchain + the target), the Windows SDK (rc.exe, signtool.exe),
-  and WiX v5 with its UI and Util extensions (installer dialogs, "Launch WordCraft" on finish):
+  and WiX v5 with its UI and Util extensions (installer dialogs, "Launch WordLogic" on finish):
     dotnet tool install --global wix --version 5.0.2
     wix extension add -g WixToolset.UI.wixext/5.0.2
     wix extension add -g WixToolset.Util.wixext/5.0.2
@@ -56,7 +56,7 @@ New-Item -ItemType Directory -Force -Path $Dist | Out-Null
 if (-not $env:WORDCRAFT_BUILD_SHA) { $env:WORDCRAFT_BUILD_SHA = (git -C $Root rev-parse HEAD 2>$null) }
 if (-not $env:WORDCRAFT_BUILD_DATE) { $env:WORDCRAFT_BUILD_DATE = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd') }
 
-Write-Output "WordCraft $Version for Windows $Arch ($Target)"
+Write-Output "WordLogic $Version for Windows $Arch ($Target)"
 
 if (-not $SkipBuild) {
   # Static CRT: no VC++ redistributable needed. Scoped to the target so host build scripts and
@@ -108,8 +108,8 @@ function ConvertTo-RtfText([string] $Text) {
   return $sb.ToString()
 }
 $paragraphs = [System.Collections.Generic.List[string]]::new()
-$paragraphs.Add('\b WordCraft\b0')
-$paragraphs.Add((ConvertTo-RtfText 'WordCraft is dual-licensed under the MIT License or the Apache License, Version 2.0, at your option. Both license texts follow. Bundled fonts and other third-party material keep their own open licenses, listed in NOTICE and ATTRIBUTION.md at https://github.com/storytold/wordcraft.'))
+$paragraphs.Add('\b WordLogic\b0')
+$paragraphs.Add((ConvertTo-RtfText 'WordLogic is made by Aegean Logic (https://www.aegeanlogic.co.uk) and is based on WordCraft. It is dual-licensed under the MIT License or the Apache License, Version 2.0, at your option. Both license texts follow. Bundled fonts and other third-party material keep their own open licenses, listed in NOTICE and ATTRIBUTION.md in its source code.'))
 foreach ($file in 'LICENSE-MIT', 'LICENSE-APACHE') {
   $title = $true  # each file opens with its license's name: show it bold
   foreach ($para in ((Get-Content -Raw (Join-Path $Root $file)) -split '\r?\n\s*\r?\n')) {

@@ -1279,6 +1279,12 @@ pub fn paint(p: &Painter, r: Rect, name: &str, c: Color32, accent: Color32) {
             pen.fcircle(7.5, 10.5, 1.5, Color32::WHITE);
             pen.fcircle(12.5, 10.5, 1.5, Color32::WHITE);
         }
+        // Website: a globe with its equator and one meridian.
+        "globe" => {
+            pen.circle(10.0, 10.0, 7.0, c);
+            pen.line(&[(3.0, 10.0), (17.0, 10.0)]);
+            pen.closed(&[(10.0, 3.0), (12.6, 5.0), (13.6, 10.0), (12.6, 15.0), (10.0, 17.0), (7.4, 15.0), (6.4, 10.0), (7.4, 5.0)], a);
+        }
         // Open: a folder with its flap lifted.
         "open" => {
             pen.closed(&[(2.5, 5.0), (7.5, 5.0), (9.0, 6.5), (15.5, 6.5), (15.5, 9.0)], c);

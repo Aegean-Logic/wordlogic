@@ -18,7 +18,7 @@ const INVALID_PARAMS: i64 = -32602;
 const INTERNAL_ERROR: i64 = -32603;
 const RESOURCE_NOT_FOUND: i64 = -32002;
 
-const INSTRUCTIONS: &str = "WordCraft is a word processor (a Microsoft Word clone). Every action is a command: find ids and \
+const INSTRUCTIONS: &str = "WordLogic is a word processor (a Microsoft Word clone). Every action is a command: find ids and \
 parameters with list_commands and run them with execute (or several with batch). Positions are \
 {story:\"body\", path:[block,(row,cell,block)...], off:byteOffset}. Typical flow: new_document → type_text \
 \"Hello\" → execute text.newParagraph → execute para.style {style:\"Heading 1\"} → select_text {text:\"Hello\"} → \
@@ -133,9 +133,9 @@ impl Server {
                 Ok(json!({
                     "protocolVersion": version,
                     "capabilities": {"tools": {}, "resources": {}},
-                    "serverInfo": {"name": "wordcraft", "title": "WordCraft", "version": env!("CARGO_PKG_VERSION"), "websiteUrl": "https://getartcraft.com/apps/wordcraft"},
+                    "serverInfo": {"name": "wordcraft", "title": "WordLogic", "version": env!("CARGO_PKG_VERSION"), "websiteUrl": "https://www.aegeanlogic.co.uk"},
                     "instructions": format!(
-                        "{INSTRUCTIONS} Backend: {}. Community: https://discord.gg/artcraft · https://getartcraft.com/apps/wordcraft · https://github.com/storytold/wordcraft",
+                        "{INSTRUCTIONS} Backend: {}. WordLogic by Aegean Logic: https://www.aegeanlogic.co.uk",
                         self.backend.describe()
                     ),
                 }))

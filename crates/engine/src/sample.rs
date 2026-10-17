@@ -30,7 +30,7 @@ fn italic() -> CharProps {
 pub fn sample_document() -> Document {
     let mut d = Document::new();
     d.core.title = "The Open Studio Handbook".into();
-    d.core.creator = "WordCraft".into();
+    d.core.creator = "WordLogic".into();
     let mut b: Vec<Block> = Vec::new();
     b.push(Block::Para(styled("The Open Studio Handbook", "Title")));
     b.push(Block::Para(styled("How a small community of makers shares space, tools and time", "Subtitle")));
@@ -112,7 +112,7 @@ pub fn sample_document() -> Document {
     add(
         &mut h,
         "Visit the community board",
-        CharProps { style: Some("Hyperlink".into()), link: Some("https://getartcraft.com/".into()), ..Default::default() },
+        CharProps { style: Some("Hyperlink".into()), link: Some("https://www.aegeanlogic.co.uk/".into()), ..Default::default() },
     );
     add(&mut h, " for events.", CharProps::default());
     b.push(Block::Para(h));

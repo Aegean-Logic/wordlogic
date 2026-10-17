@@ -17,9 +17,8 @@
 
 	(no suggestions)	(brak propozycji)
 	1.5 Line Spacing	Interlinia 1,5
-	A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team.	Darmowy edytor tekstu o otwartym kodzie, napisany od podstaw w języku Rust.\nCzęść rodziny Crafting Apps zespołu ArtCraft.
 	About	Informacje
-	About WordCraft	O programie WordCraft
+	About WordLogic	O programie WordLogic
 	Accept	Zaakceptuj
 	Accept All Changes	Zaakceptuj wszystkie zmiany
 	Accept This Change	Zaakceptuj tę zmianę
@@ -149,7 +148,6 @@
 	Comment	Komentarz
 	Comments	Komentarze
 	Comments Pane	Okienko komentarzy
-	Community\nDiscord	Społeczność\nDiscord
 	Compact	Zwarte
 	Compare	Porównaj
 	Compress Pictures	Kompresuj obrazy
@@ -201,8 +199,6 @@
 	Different First Page	Inna pierwsza strona
 	Different Odd & Even Pages	Inne strony parzyste i nieparzyste
 	Direct formatting	Formatowanie bezpośrednie
-	Discord	Discord
-	Discord community	Społeczność na Discordzie
 	Display	Wyświetlanie
 	Display for Review	Wyświetlanie do recenzji
 	Distribute Columns	Rozłóż kolumny
@@ -364,8 +360,6 @@
 	Inspect Styles at Selection	Przejrzyj style zaznaczenia
 	Interface language:	Język interfejsu:
 	Italic	Kursywa
-	Join the ArtCraft community on Discord	Dołącz do społeczności ArtCraft na Discordzie
-	Join us on Discord: discord.gg/artcraft	Dołącz do nas na Discordzie: discord.gg/artcraft
 	Justify	Wyjustuj
 	Keep Lines Together	Zachowaj wiersze razem
 	Keep Text Only	Zachowaj tylko tekst
@@ -377,7 +371,7 @@
 	Landscape	Pozioma
 	Language	Język
 	{language} (no dictionary)	{language} (brak słownika)
-	No spelling dictionary for {language} is installed, so it isn't checked. WordCraft looks for the Hunspell dictionary {name} in the WORDCRAFT_DICTIONARIES folder and in the usual system locations.	Nie zainstalowano słownika pisowni dla języka: {language}, więc tekst nie jest sprawdzany. WordCraft szuka słownika Hunspell {name} w folderze WORDCRAFT_DICTIONARIES i w typowych lokalizacjach systemowych.
+	No spelling dictionary for {language} is installed, so it isn't checked. WordLogic looks for the Hunspell dictionary {name} in the WORDCRAFT_DICTIONARIES folder and in the usual system locations.	Nie zainstalowano słownika pisowni dla języka: {language}, więc tekst nie jest sprawdzany. WordLogic szuka słownika Hunspell {name} w folderze WORDCRAFT_DICTIONARIES i w typowych lokalizacjach systemowych.
 	Lasso	Lasso
 	Last Column	Ostatnia kolumna
 	Last commit	Ostatni commit
@@ -406,7 +400,6 @@
 	Link to Previous	Połącz z poprzednim
 	Links	Linki
 	Location: {path}	Lokalizacja: {path}
-	MIT OR Apache-2.0. Copyright (c) 2026 ArtCraft Team and the WordCraft contributors.	MIT lub Apache-2.0. Copyright (c) 2026 ArtCraft Team i współtwórcy WordCraft.
 	Macros	Makra
 	Mailings	Korespondencja
 	Manage Sources	Zarządzaj źródłami
@@ -673,7 +666,6 @@
 	Show Notes	Pokaż przypisy
 	Show all formatting marks	Pokaż wszystkie znaki formatowania
 	Show rulers	Pokaż linijki
-	Show the community button in the title bar	Pokaż przycisk społeczności na pasku tytułu
 	Show/Hide ¶	Pokaż/ukryj ¶
 	Show\nComments	Pokaż\nkomentarze
 	Shrink Font 1 Point	Pomniejsz czcionkę o 1 punkt
@@ -688,7 +680,6 @@
 	Small caps	Kapitaliki
 	SmartArt	SmartArt
 	Sort	Sortuj
-	Source code: github.com/storytold/wordcraft	Kod źródłowy: github.com/storytold/wordcraft
 	Space before/after:	Odstęp przed/po:
 	Spacing	Odstępy
 	Spacing (pt):	Odstępy (pt):
@@ -816,7 +807,7 @@
 	Word Right	Słowo w prawo
 	Word document (*.docx)	Dokument Word (*.docx)
 	WordArt	WordArt
-	WordCraft	WordCraft
+	WordLogic	WordLogic
 	Words	Słowa
 	Words only	Tylko wyrazy
 	Wrap Text	Zawijaj tekst
@@ -884,7 +875,7 @@
 	Stopped	Zatrzymano
 	Speed	Szybkość
 	Normal speed	Normalna szybkość
-	AutoSave documents you have saved in WordCraft	Zapisuj automatycznie dokumenty zapisane już w programie WordCraft
+	AutoSave documents you have saved in WordLogic	Zapisuj automatycznie dokumenty zapisane już w programie WordLogic
 	AutoSave failed: {error}. Save the document to turn AutoSave back on.	Autozapis nie powiódł się: {error}. Zapisz dokument, aby ponownie włączyć autozapis.
 	Couldn't download {name}: {error}	Nie udało się pobrać pliku {name}: {error}
 	Do you want to save changes to {name}?	Czy zapisać zmiany w dokumencie {name}?
@@ -1051,7 +1042,6 @@
 	Insert a new equation (Alt+=)	Wstaw nowe równanie (Alt+=)
 	Leave the equation (Esc)	Opuść równanie (Esc)
 	Preview	Podgląd
-	getartcraft.com/apps/wordcraft	getartcraft.com/apps/wordcraft
 	English (United Kingdom)	Angielski (Wielka Brytania)
 	Polish	Polski
 	Do Not Check Spelling or Grammar	Nie sprawdzaj pisowni ani gramatyki
@@ -1106,7 +1096,7 @@
 	Glow Colors	Kolory poświaty
 	Hide from style lists	Ukryj na listach stylów
 	Indents and Spacing	Wcięcia i odstępy
-	Keep the password somewhere safe: without it nobody, WordCraft included, can open the document. Leave both boxes empty to remove the password.	Przechowuj hasło w bezpiecznym miejscu: bez niego nikt, również WordCraft, nie otworzy dokumentu. Pozostaw oba pola puste, aby usunąć hasło.
+	Keep the password somewhere safe: without it nobody, WordLogic included, can open the document. Leave both boxes empty to remove the password.	Przechowuj hasło w bezpiecznym miejscu: bez niego nikt, również WordLogic, nie otworzy dokumentu. Pozostaw oba pola puste, aby usunąć hasło.
 	Line breaking	Łamanie wierszy
 	Linked style (paragraph and character)	Styl połączony (akapitowy i znakowy)
 	Manage Styles	Zarządzaj stylami
@@ -1732,7 +1722,7 @@
 	Beginning of Word	Początek wyrazu
 	Blue:	Niebieski:
 	Border lines	Linie obramowania
-	Browse in WordCraft…	Przeglądaj w programie WordCraft…
+	Browse in WordLogic…	Przeglądaj w programie WordLogic…
 	Building Block Gallery Content Control	Formant zawartości galerii bloków konstrukcyjnych
 	Can't be deleted	Nie można usunąć
 	Capitalize first letter of sentences	Zaczynaj zdania wielką literą
@@ -1906,7 +1896,7 @@
 	Only comments can be added, except in regions marked editable.	Można dodawać tylko komentarze, z wyjątkiem obszarów oznaczonych jako edytowalne.
 	Only form fields can be filled in.	Można wypełniać tylko pola formularza.
 	Only the allowed styles can be applied.	Można stosować tylko dozwolone style.
-	Open a file with WordCraft's own browser when the system file dialog doesn't appear.	Otwórz plik we własnej przeglądarce plików programu WordCraft, gdy systemowe okno wyboru pliku się nie pojawia.
+	Open a file with WordLogic's own browser when the system file dialog doesn't appear.	Otwórz plik we własnej przeglądarce plików programu WordLogic, gdy systemowe okno wyboru pliku się nie pojawia.
 	Ordinals (1st) as superscript	Liczebniki porządkowe (1st) jako indeks górny
 	Organizer	Organizator
 	Organizer…	Organizator…
@@ -2042,7 +2032,7 @@
 	The document is read only, except for regions marked editable.	Dokument jest tylko do odczytu, z wyjątkiem obszarów oznaczonych jako edytowalne.
 	The password is optional; without it anyone can stop the protection.	Hasło jest opcjonalne; bez niego każdy może wyłączyć ochronę.
 	The printer, two-sided printing and pages per sheet are chosen in that dialog.	Drukarkę, druk dwustronny i liczbę stron na arkuszu wybiera się w tym oknie.
-	The system file dialog isn't available, so WordCraft shows its own. To get the system dialog, install a file chooser portal (such as xdg-desktop-portal-gtk) or zenity.	Systemowe okno wyboru pliku jest niedostępne, więc WordCraft pokazuje własne. Aby korzystać z okna systemowego, zainstaluj portal wyboru plików (np. xdg-desktop-portal-gtk) lub zenity.
+	The system file dialog isn't available, so WordLogic shows its own. To get the system dialog, install a file chooser portal (such as xdg-desktop-portal-gtk) or zenity.	Systemowe okno wyboru pliku jest niedostępne, więc WordLogic pokazuje własne. Aby korzystać z okna systemowego, zainstaluj portal wyboru plików (np. xdg-desktop-portal-gtk) lub zenity.
 	These marks show even when Show/Hide ¶ is off.	Te znaki są widoczne nawet przy wyłączonym poleceniu Pokaż wszystko ¶.
 	This document	Ten dokument
 	This folder can't be read: {error}	Nie można odczytać tego folderu: {error}
@@ -2086,15 +2076,15 @@
 	Undo 1 Action	Cofnij 1 akcję
 	Undo {n} Actions	Cofnij akcje: {n}
 	Start-up	Uruchamianie
-	Show the Start screen when WordCraft starts	Pokazuj ekran startowy po uruchomieniu programu WordCraft
-	On: WordCraft opens on File › Home, with a blank document, the templates and your recent documents. Off: it opens a blank document.	Włączone: WordCraft otwiera się na karcie Plik › Start z pustym dokumentem, szablonami i ostatnimi dokumentami. Wyłączone: otwiera pusty dokument.
-	Couldn't make WordCraft the default: {error}	Nie udało się ustawić WordCraft jako domyślnego: {error}
-	In Default apps, choose WordCraft for the document types you want it to open.	W Aplikacjach domyślnych wybierz WordCraft dla typów dokumentów, które ma otwierać.
-	Make WordCraft the default for Word documents…	Ustaw WordCraft jako domyślny dla dokumentów Word…
-	Opens .docx, .doc, .rtf and .odt files and Word templates with WordCraft from now on.	Od teraz pliki .docx, .doc, .rtf i .odt oraz szablony Word otwierają się w WordCraft.
-	Opens Settings › Default apps, where you choose WordCraft for .docx and the other document types.	Otwiera Ustawienia › Aplikacje domyślne, gdzie wybierasz WordCraft dla .docx i innych typów dokumentów.
-	To open Word documents with WordCraft by default: select one in Finder, choose File › Get Info, pick WordCraft under Open with, then click Change All.	Aby otwierać dokumenty Word domyślnie w WordCraft: zaznacz jeden w Finderze, wybierz Plik › Pokaż info, wybierz WordCraft w „Otwórz za pomocą”, a następnie kliknij „Zmień wszystkie”.
-	WordCraft is now the default app for Word documents.	WordCraft jest teraz domyślną aplikacją dla dokumentów Word.
+	Show the Start screen when WordLogic starts	Pokazuj ekran startowy po uruchomieniu programu WordLogic
+	On: WordLogic opens on File › Home, with a blank document, the templates and your recent documents. Off: it opens a blank document.	Włączone: WordLogic otwiera się na karcie Plik › Start z pustym dokumentem, szablonami i ostatnimi dokumentami. Wyłączone: otwiera pusty dokument.
+	Couldn't make WordLogic the default: {error}	Nie udało się ustawić WordLogic jako domyślnego: {error}
+	In Default apps, choose WordLogic for the document types you want it to open.	W Aplikacjach domyślnych wybierz WordLogic dla typów dokumentów, które ma otwierać.
+	Make WordLogic the default for Word documents…	Ustaw WordLogic jako domyślny dla dokumentów Word…
+	Opens .docx, .doc, .rtf and .odt files and Word templates with WordLogic from now on.	Od teraz pliki .docx, .doc, .rtf i .odt oraz szablony Word otwierają się w WordLogic.
+	Opens Settings › Default apps, where you choose WordLogic for .docx and the other document types.	Otwiera Ustawienia › Aplikacje domyślne, gdzie wybierasz WordLogic dla .docx i innych typów dokumentów.
+	To open Word documents with WordLogic by default: select one in Finder, choose File › Get Info, pick WordLogic under Open with, then click Change All.	Aby otwierać dokumenty Word domyślnie w WordLogic: zaznacz jeden w Finderze, wybierz Plik › Pokaż info, wybierz WordLogic w „Otwórz za pomocą”, a następnie kliknij „Zmień wszystkie”.
+	WordLogic is now the default app for Word documents.	WordLogic jest teraz domyślną aplikacją dla dokumentów Word.
 	Numerals:	Cyfry:
 	Numerals	Cyfry
 	Hindi	Hindi
@@ -2551,7 +2541,7 @@ preview	Title	Tytuł
 	{name}   {height} × {width} mm	{name}   {height} × {width} mm
 	{width} × {height} mm	{width} × {height} mm
 	{kind}, {columns} × {rows}, {size} ({paper})	{kind}, {columns} × {rows}, {size} ({paper})
-	Researcher needs an online service; WordCraft keeps your documents offline.	Badacz wymaga usługi online, a WordCraft przechowuje Twoje dokumenty offline.
+	Researcher needs an online service; WordLogic keeps your documents offline.	Badacz wymaga usługi online, a WordLogic przechowuje Twoje dokumenty offline.
 	These settings will be used for new documents.	Te ustawienia będą używane w nowych dokumentach.
 	can't split at the first row	nie można podzielić tabeli na pierwszym wierszu
 	select two or more cells to merge	zaznacz co najmniej dwie komórki do scalenia
@@ -2622,3 +2612,14 @@ preview	Title	Tytuł
 # Reading Mode column widths (#1040)
 	Narrow	Wąska
 	Medium	Średnia
+
+# WordLogic: the About box and the Aegean Logic website button.
+	Aegean Logic	Aegean Logic
+	Visit www.aegeanlogic.co.uk	Odwiedź www.aegeanlogic.co.uk
+	Aegean Logic website	Witryna Aegean Logic
+	Aegean Logic\nWebsite	Witryna\nAegean Logic
+	Show the Aegean Logic button in the title bar	Pokaż przycisk Aegean Logic na pasku tytułu
+	by Aegean Logic	od Aegean Logic
+	A free, open-source word processor written from scratch in Rust, based on WordCraft.	Darmowy edytor tekstu o otwartym kodzie, napisany od podstaw w języku Rust, oparty na WordCraft.
+	www.aegeanlogic.co.uk	www.aegeanlogic.co.uk
+	MIT OR Apache-2.0. Copyright (c) 2026 Aegean Logic. Based on WordCraft, copyright (c) 2026 ArtCraft Team and the WordCraft contributors.	MIT lub Apache-2.0. Copyright (c) 2026 Aegean Logic. Na podstawie WordCraft, copyright (c) 2026 ArtCraft Team i współtwórcy WordCraft.

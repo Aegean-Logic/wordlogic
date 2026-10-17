@@ -19,9 +19,8 @@
 	(no style)	(không có kiểu)
 	(no suggestions)	(không có gợi ý)
 	1.5 Line Spacing	Giãn dòng 1,5
-	A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team.	Trình xử lý văn bản miễn phí, mã nguồn mở được viết từ đầu bằng Rust.\nMột phần trong bộ ứng dụng Crafting Apps của đội ngũ ArtCraft.
 	About	Giới thiệu
-	About WordCraft	Giới thiệu về WordCraft
+	About WordLogic	Giới thiệu về WordLogic
 	Accept	Chấp nhận
 	Accept All Changes	Chấp nhận tất cả thay đổi
 	Accept This Change	Chấp nhận thay đổi này
@@ -221,7 +220,6 @@
 	Comment	Nhận xét
 	Comments	Nhận xét
 	Comments Pane	Ngăn nhận xét
-	Community\nDiscord	Cộng đồng\nDiscord
 	Compact	Thu gọn
 	Compare	So sánh
 	Compress Pictures	Nén ảnh
@@ -274,8 +272,6 @@
 	Different First Page	Trang đầu khác biệt
 	Different Odd & Even Pages	Trang chẵn & lẻ khác nhau
 	Direct formatting	Định dạng trực tiếp
-	Discord	Discord
-	Discord community	Cộng đồng Discord
 	Display	Hiển thị
 	Display for Review	Hiển thị để xem lại
 	Distribute Columns	Chia đều cột
@@ -440,8 +436,6 @@
 	Inspect Styles at Selection	Kiểm tra kiểu tại vùng chọn
 	Interface language:	Ngôn ngữ giao diện:
 	Italic	In nghiêng
-	Join the ArtCraft community on Discord	Tham gia cộng đồng ArtCraft trên Discord
-	Join us on Discord: discord.gg/artcraft	Tham gia cùng chúng tôi trên Discord: discord.gg/artcraft
 	Justify	Căn đều
 	Keep Lines Together	Giữ các dòng cùng nhau
 	Keep Text Only	Chỉ giữ văn bản
@@ -481,7 +475,6 @@
 	Link to Previous	Liên kết với phần trước
 	Links	Liên kết
 	Location: {path}	Vị trí: {path}
-	MIT OR Apache-2.0. Copyright (c) 2026 ArtCraft Team and the WordCraft contributors.	MIT OR Apache-2.0. Bản quyền (c) 2026 ArtCraft Team và các cộng tác viên WordCraft.
 	Macros	Macro
 	Mailings	Gửi thư
 	Manage Sources	Quản lý nguồn
@@ -762,7 +755,6 @@
 	Show only comments and formatting in balloons	Chỉ hiện nhận xét và định dạng trong ô bên lề
 	Show revisions in balloons	Hiện các sửa đổi trong ô bên lề
 	Show rulers	Hiện thước
-	Show the community button in the title bar	Hiện nút cộng đồng trong thanh tiêu đề
 	Show/Hide ¶	Hiện/Ẩn ¶
 	Show\nComments	Hiện\nnhận xét
 	Shrink Font 1 Point	Giảm cỡ phông chữ 1 pt
@@ -778,7 +770,6 @@
 	Small caps	Chữ hoa nhỏ
 	SmartArt	SmartArt
 	Sort	Sắp xếp
-	Source code: github.com/storytold/wordcraft	Mã nguồn: github.com/storytold/wordcraft
 	Space	Dấu cách
 	Space before/after:	Khoảng cách trước/sau:
 	Spacing	Khoảng cách
@@ -913,7 +904,7 @@
 	Word Right	Đưa con trỏ sang phải một từ
 	Word document (*.docx)	Tài liệu Word (*.docx)
 	WordArt	WordArt
-	WordCraft	WordCraft
+	WordLogic	WordLogic
 	Words	Từ
 	Words only	Chỉ gạch chân từ
 	Wrap Text	Văn bản quanh đối tượng
@@ -980,7 +971,7 @@
 	Stopped	Đã dừng
 	Speed	Tốc độ
 	Normal speed	Tốc độ bình thường
-	AutoSave documents you have saved in WordCraft	Tự động lưu các tài liệu bạn đã lưu trong WordCraft
+	AutoSave documents you have saved in WordLogic	Tự động lưu các tài liệu bạn đã lưu trong WordLogic
 	AutoSave failed: {error}. Save the document to turn AutoSave back on.	Không thể tự động lưu: {error}. Hãy lưu tài liệu để bật lại tính năng này.
 	Couldn't download {name}: {error}	Không tải được {name}: {error}
 	Do you want to save changes to {name}?	Bạn có muốn lưu các thay đổi vào {name}?
@@ -1149,7 +1140,6 @@
 	Insert a new equation (Alt+=)	Chèn phương trình mới (Alt+=)
 	Leave the equation (Esc)	Rời khỏi phương trình (Esc)
 	Preview	Xem thử
-	getartcraft.com/apps/wordcraft	getartcraft.com/apps/wordcraft
 	Draw Ink	Vẽ mực
 	Erase Ink	Xóa mực
 	Hide Ink	Ẩn mực
@@ -1285,7 +1275,7 @@
 	The document will be saved with a password. Save it to protect it.	Tài liệu sẽ được lưu kèm mật khẩu. Hãy lưu lại để bảo vệ tài liệu.
 	The password is removed. Save the document to keep the change.	Đã gỡ mật khẩu. Hãy lưu tài liệu để giữ lại thay đổi này.
 	The passwords don't match.	Hai mật khẩu không khớp.
-	Keep the password somewhere safe: without it nobody, WordCraft included, can open the document. Leave both boxes empty to remove the password.	Hãy giữ mật khẩu ở nơi an toàn: nếu mất thì không ai, kể cả WordCraft, có thể mở được tài liệu. Để trống cả hai ô nếu muốn gỡ mật khẩu.
+	Keep the password somewhere safe: without it nobody, WordLogic included, can open the document. Leave both boxes empty to remove the password.	Hãy giữ mật khẩu ở nơi an toàn: nếu mất thì không ai, kể cả WordLogic, có thể mở được tài liệu. Để trống cả hai ô nếu muốn gỡ mật khẩu.
 	Align Top Left	Căn trên trái
 	Align Top Center	Căn trên giữa
 	Align Top Right	Căn trên phải
@@ -2382,7 +2372,7 @@
 	Word document	Tài liệu Word
 	All files	Tất cả tệp
 	Recipient lists	Danh sách người nhận
-	The system file dialog isn't available, so WordCraft shows its own. To get the system dialog, install a file chooser portal (such as xdg-desktop-portal-gtk) or zenity.	Hộp thoại tệp của hệ thống không khả dụng, nên WordCraft hiển thị hộp thoại riêng. Để dùng hộp thoại của hệ thống, hãy cài đặt cổng chọn tệp (như xdg-desktop-portal-gtk) hoặc zenity.
+	The system file dialog isn't available, so WordLogic shows its own. To get the system dialog, install a file chooser portal (such as xdg-desktop-portal-gtk) or zenity.	Hộp thoại tệp của hệ thống không khả dụng, nên WordLogic hiển thị hộp thoại riêng. Để dùng hộp thoại của hệ thống, hãy cài đặt cổng chọn tệp (như xdg-desktop-portal-gtk) hoặc zenity.
 	Up one level	Lên một cấp
 	Home folder	Thư mục chính
 	{name} wasn't found.	Không tìm thấy {name}.
@@ -2390,8 +2380,8 @@
 	This folder can't be read: {error}	Không thể đọc thư mục này: {error}
 	Showing the first {count} items.	Đang hiển thị {count} mục đầu tiên.
 	File name:	Tên tệp:
-	Browse in WordCraft…	Duyệt trong WordCraft…
-	Open a file with WordCraft's own browser when the system file dialog doesn't appear.	Mở tệp bằng trình duyệt tệp của WordCraft khi hộp thoại tệp của hệ thống không xuất hiện.
+	Browse in WordLogic…	Duyệt trong WordLogic…
+	Open a file with WordLogic's own browser when the system file dialog doesn't appear.	Mở tệp bằng trình duyệt tệp của WordLogic khi hộp thoại tệp của hệ thống không xuất hiện.
 	Resize Table by Dragging	Đổi cỡ bảng bằng cách kéo
 	Visual effects	Hiệu ứng hình ảnh
 	Animation effects:	Hiệu ứng động:
@@ -2417,23 +2407,23 @@
 	TOC {n}	Mục lục {n}
 	Good afternoon	Chào buổi chiều
 	Context	Theo ngữ cảnh
-	Couldn't make WordCraft the default: {error}	Không thể đặt WordCraft làm ứng dụng mặc định: {error}
+	Couldn't make WordLogic the default: {error}	Không thể đặt WordLogic làm ứng dụng mặc định: {error}
 	Do Not Check Spelling or Grammar	Không kiểm tra chính tả hoặc ngữ pháp
 	Hindi	Tiếng Hindi
-	In Default apps, choose WordCraft for the document types you want it to open.	Trong Ứng dụng mặc định, chọn WordCraft cho các loại tài liệu bạn muốn mở bằng ứng dụng này.
-	Make WordCraft the default for Word documents…	Đặt WordCraft làm ứng dụng mặc định cho tài liệu Word…
+	In Default apps, choose WordLogic for the document types you want it to open.	Trong Ứng dụng mặc định, chọn WordLogic cho các loại tài liệu bạn muốn mở bằng ứng dụng này.
+	Make WordLogic the default for Word documents…	Đặt WordLogic làm ứng dụng mặc định cho tài liệu Word…
 	Numerals	Chữ số
 	Numerals:	Chữ số:
-	Opens .docx, .doc, .rtf and .odt files and Word templates with WordCraft from now on.	Từ nay, mở tệp .docx, .doc, .rtf, .odt và mẫu Word bằng WordCraft.
-	Opens Settings › Default apps, where you choose WordCraft for .docx and the other document types.	Mở Cài đặt › Ứng dụng mặc định để chọn WordCraft cho .docx và các loại tài liệu khác.
+	Opens .docx, .doc, .rtf and .odt files and Word templates with WordLogic from now on.	Từ nay, mở tệp .docx, .doc, .rtf, .odt và mẫu Word bằng WordLogic.
+	Opens Settings › Default apps, where you choose WordLogic for .docx and the other document types.	Mở Cài đặt › Ứng dụng mặc định để chọn WordLogic cho .docx và các loại tài liệu khác.
 	Reading	Đọc
 	Reading Column Width	Độ rộng cột khi đọc
 	Reading Line Spacing	Giãn dòng khi đọc
 	Reading Text Size	Cỡ chữ khi đọc
 	Show KeyTips (Alt or F10)	Hiện gợi ý phím (Alt hoặc F10)
 	System	Hệ thống
-	To open Word documents with WordCraft by default: select one in Finder, choose File › Get Info, pick WordCraft under Open with, then click Change All.	Để mở tài liệu Word bằng WordCraft theo mặc định: chọn một tài liệu trong Finder, chọn Tệp › Lấy thông tin, chọn WordCraft ở mục Mở bằng, rồi nhấp Thay đổi tất cả.
-	WordCraft is now the default app for Word documents.	WordCraft hiện là ứng dụng mặc định cho tài liệu Word.
+	To open Word documents with WordLogic by default: select one in Finder, choose File › Get Info, pick WordLogic under Open with, then click Change All.	Để mở tài liệu Word bằng WordLogic theo mặc định: chọn một tài liệu trong Finder, chọn Tệp › Lấy thông tin, chọn WordLogic ở mục Mở bằng, rồi nhấp Thay đổi tất cả.
+	WordLogic is now the default app for Word documents.	WordLogic hiện là ứng dụng mặc định cho tài liệu Word.
 	Correct TWo INitial CApitals	Sửa lỗi viết hoa hai chữ cái đầu
 	Correct accidental usage of cAPS LOCK key	Sửa lỗi vô tình dùng phím Caps Lock
 	Picture	Ảnh
@@ -2445,8 +2435,8 @@
 	Undo History	Lịch sử hoàn tác
 	Undo {n} Actions	Hoàn tác {n} thao tác
 	Start-up	Khởi động
-	Show the Start screen when WordCraft starts	Hiện màn hình Bắt đầu khi khởi chạy WordCraft
-	On: WordCraft opens on File › Home, with a blank document, the templates and your recent documents. Off: it opens a blank document.	Bật: WordCraft mở ở Tệp › Trang chủ, với tài liệu trống, các mẫu và tài liệu gần đây của bạn. Tắt: WordCraft mở một tài liệu trống.
+	Show the Start screen when WordLogic starts	Hiện màn hình Bắt đầu khi khởi chạy WordLogic
+	On: WordLogic opens on File › Home, with a blank document, the templates and your recent documents. Off: it opens a blank document.	Bật: WordLogic mở ở Tệp › Trang chủ, với tài liệu trống, các mẫu và tài liệu gần đây của bạn. Tắt: WordLogic mở một tài liệu trống.
 	Typing	Nhập liệu
 	Level 4	Cấp 4
 	Level 5	Cấp 5
@@ -2500,7 +2490,7 @@
 	Go to what:	Đi tới:
 	Language Preferences…	Tùy chọn ngôn ngữ…
 	Reading Mode	Chế độ đọc
-	Researcher needs an online service; WordCraft keeps your documents offline.	Trình nghiên cứu cần một dịch vụ trực tuyến; WordCraft giữ tài liệu của bạn ngoại tuyến.
+	Researcher needs an online service; WordLogic keeps your documents offline.	Trình nghiên cứu cần một dịch vụ trực tuyến; WordLogic giữ tài liệu của bạn ngoại tuyến.
 	Set Proofing Language…	Đặt ngôn ngữ soát lỗi…
 	Suggested	Đề xuất
 	Text size	Cỡ chữ
@@ -2634,7 +2624,7 @@
 	Place in This Document	Vị trí trong tài liệu này
 
 # Missing dictionary on the status bar (#1441)
-	No spelling dictionary for {language} is installed, so it isn't checked. WordCraft looks for the Hunspell dictionary {name} in the WORDCRAFT_DICTIONARIES folder and in the usual system locations.	Chưa cài từ điển chính tả cho {language}, nên ngôn ngữ này không được kiểm tra. WordCraft tìm từ điển Hunspell {name} trong thư mục WORDCRAFT_DICTIONARIES và ở các vị trí thông thường của hệ thống.
+	No spelling dictionary for {language} is installed, so it isn't checked. WordLogic looks for the Hunspell dictionary {name} in the WORDCRAFT_DICTIONARIES folder and in the usual system locations.	Chưa cài từ điển chính tả cho {language}, nên ngôn ngữ này không được kiểm tra. WordLogic tìm từ điển Hunspell {name} trong thư mục WORDCRAFT_DICTIONARIES và ở các vị trí thông thường của hệ thống.
 	{language} (no dictionary)	{language} (không có từ điển)
 # Table style parts in the Modify Table Style dialog (#714)
 	Odd Banded Rows	Hàng xen kẽ lẻ
@@ -2672,3 +2662,14 @@ template	Letter	Thư
 # Reading Mode column widths (#1040)
 	Narrow	Hẹp
 	Medium	Trung bình
+
+# WordLogic: the About box and the Aegean Logic website button.
+	Aegean Logic	Aegean Logic
+	Visit www.aegeanlogic.co.uk	Truy cập www.aegeanlogic.co.uk
+	Aegean Logic website	Trang web Aegean Logic
+	Aegean Logic\nWebsite	Trang web\nAegean Logic
+	Show the Aegean Logic button in the title bar	Hiện nút Aegean Logic trong thanh tiêu đề
+	by Aegean Logic	của Aegean Logic
+	A free, open-source word processor written from scratch in Rust, based on WordCraft.	Trình xử lý văn bản miễn phí, mã nguồn mở được viết từ đầu bằng Rust, dựa trên WordCraft.
+	www.aegeanlogic.co.uk	www.aegeanlogic.co.uk
+	MIT OR Apache-2.0. Copyright (c) 2026 Aegean Logic. Based on WordCraft, copyright (c) 2026 ArtCraft Team and the WordCraft contributors.	MIT OR Apache-2.0. Bản quyền (c) 2026 Aegean Logic. Dựa trên WordCraft, bản quyền (c) 2026 ArtCraft Team và các cộng tác viên WordCraft.

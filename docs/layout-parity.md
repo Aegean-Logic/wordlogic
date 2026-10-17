@@ -28,7 +28,7 @@ font can't match Word's metrics.
 | Symbol fonts (Symbol, Wingdings, Wingdings 2/3, Webdings) without the proprietary font: each character, stored as U+F020–U+F0FF or a plain 8-bit code, is drawn as its Unicode equivalent from a face that has it; PDF text and copies read as those symbols | ✅ | `doc::symbol_fonts` tables (Adobe Symbol table and Unicode L2/12-368), `layout::tests::wingdings_text_draws_and_reads_as_its_unicode_symbols` (#776). Shapes come from Noto Sans Symbols / Symbols 2, DejaVu Sans or Segoe UI Symbol, so they differ from Word's; Wingdings 0xFF (not in Unicode) still has no symbol | — |
 | Indents in characters (`w:firstLineChars`, `w:leftChars`…), measured in the paragraph mark's font size | ✅ | #534, `layout::tests::character_indents_use_the_paragraph_mark_size`; spacing in lines (`w:beforeLines`/`w:afterLines`) uses the stored points (needs the document grid) | — |
 | Line spacing (single, 1.5, double, at least, exactly, multiple), spacing before/after, contextual spacing | 🟡 | Contextual spacing measured in body paragraphs and headers (below), with a four-paragraph table-cell regression; list-label ascent overflow is unscaled by multiple spacing and uses descent for automatic and at-least spacing (#601); other line-spacing combinations remain (#108, #135 open) | 3–5 |
-| Kerning only where Kerning for fonts asks for it (`w:kern`, at or above its size) | ✅ | Measured in Word for Windows: no `w:kern` or `w:kern="0"` is unkerned; WordCraft kerned every run, so its lines held more text than Word's. `layout::tests::kerning_follows_kerning_for_fonts_like_word` | — |
+| Kerning only where Kerning for fonts asks for it (`w:kern`, at or above its size) | ✅ | Measured in Word for Windows: no `w:kern` or `w:kern="0"` is unkerned; WordLogic kerned every run, so its lines held more text than Word's. `layout::tests::kerning_follows_kerning_for_fonts_like_word` | — |
 | Automatic (HTML-style) paragraph spacing (`w:beforeAutospacing`, `w:afterAutospacing`) | ✅ | Measured in Word for Windows: 14 pt at any size, none at the top of the document or a cell or after a cell's last paragraph, the larger of two neighbouring spaces. `layout::tests::automatic_paragraph_spacing_like_word`, `…_drops_at_cell_edges` | — |
 | Paragraph boundaries inside field instructions | ✅ | Synthetic DOCX observed in Word: instruction-only paragraphs add no height; the empty result keeps a line. `docx::fixtures::field_code_spans_paragraphs`, `layout::tests::hidden_marks_take_no_space`. Other field-code display modes remain unverified | — |
 | Widow/orphan control, keep with next, keep lines together, page break before | ✅ | `lib.rs` keep_next/keep_lines; a line holding only a page break stays at the bottom of a full page instead of leaving a blank page (#534); a paragraph ending with a page break keeps its space after on the old page, so the next page starts at the top (compatibility modes 12 to 15, `layout::tests::space_before_at_the_top_of_a_page_like_word`); a three-line paragraph with room for two moves whole (neither a widow nor an orphan is allowed), as in Word | — |
@@ -79,7 +79,7 @@ its full gap to ascent too, so labels now use that shared metric. The table reco
 measurements, not a new native comparison of this rebase. These are
 observations of synthetic documents, not a claim about Word's internal implementation.
 
-| Label / spacing | Word baseline gap | Fixed WordCraft | Before fix |
+| Label / spacing | Word baseline gap | Fixed WordLogic | Before fix |
 |---|---:|---:|---:|
 | Roboto 24 pt / single | 25.20 pt | 25.1953 pt | 28.125 pt |
 | Roboto 24 pt / 1.25 | 28.80 pt | 28.7109 pt | 35.1563 pt |
@@ -110,7 +110,7 @@ The model and DOCX reader/writer preserve the flag. Cell layout bypasses context
 suppression only for enabled modes 11/12/14, including cells without table-style formatting.
 Tests: `legacy_table_contextual_spacing_flag_keeps_after_space` and
 `legacy_table_contextual_spacing_flag_is_scoped_to_cells_and_legacy_mode`.
-WordCraft original-open and save/reopen measurements match all 12 controls; reopening
+WordLogic original-open and save/reopen measurements match all 12 controls; reopening
 its saved DOCX files in Word retains the same gaps. Word-derived exports stay local under
 ignored `plan/word/`; no Word-generated fixture is committed.
 
@@ -147,7 +147,7 @@ No overall parity estimate changes from these probes.
 
 ## Performance
 
-| Measure | WordCraft | Word | Kind |
+| Measure | WordLogic | Word | Kind |
 |---|---|---|---|
 | Cold layout, 188-page document | 61 ms | not measured | measured 2026-10-06 (not re-run this pass) |
 | Relayout after an edit | 1.4 ms | not measured | measured 2026-10-06 |

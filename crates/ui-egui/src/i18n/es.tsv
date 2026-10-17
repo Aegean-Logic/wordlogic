@@ -16,9 +16,8 @@
 	(no style)	(sin estilo)
 	(no suggestions)	(sin sugerencias)
 	1.5 Line Spacing	Interlineado 1,5
-	A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team.	Un procesador de textos gratuito y de código abierto, escrito desde cero en Rust.\nForma parte de las Crafting Apps del equipo de ArtCraft.
 	About	Acerca de
-	About WordCraft	Acerca de WordCraft
+	About WordLogic	Acerca de WordLogic
 	Accept	Aceptar
 	Accept All Changes	Aceptar todos los cambios
 	Accept This Change	Aceptar este cambio
@@ -279,7 +278,6 @@
 	Comment	Comentario
 	Comments	Comentarios
 	Comments Pane	Panel de comentarios
-	Community\nDiscord	Comunidad\nDiscord
 	Compact	Compacto
 	Compare	Comparar
 	Compress Pictures	Comprimir imágenes
@@ -293,7 +291,7 @@
 	Copy	Copiar
 	Copy Formatting	Copiar formato
 	Corrections	Correcciones
-	Couldn't make WordCraft the default: {error}	No se pudo hacer de WordCraft la aplicación predeterminada: {error}
+	Couldn't make WordLogic the default: {error}	No se pudo hacer de WordLogic la aplicación predeterminada: {error}
 	Count words in text boxes and notes	Contar las palabras de los cuadros de texto y las notas
 	Cover Page	Portada
 	Create	Crear
@@ -334,8 +332,6 @@
 	Different First Page	Primera página diferente
 	Different Odd & Even Pages	Páginas pares e impares diferentes
 	Direct formatting	Formato directo
-	Discord	Discord
-	Discord community	Comunidad de Discord
 	Display	Mostrar
 	Display for Review	Mostrar para revisión
 	Distribute Columns	Distribuir columnas
@@ -469,7 +465,7 @@
 	Immersive	Inmersivo
 	Immersive Reader	Lector inmersivo
 	Immersive\nReader	Lector\ninmersivo
-	In Default apps, choose WordCraft for the document types you want it to open.	En Aplicaciones predeterminadas, elige WordCraft para los tipos de documento que quieras que abra.
+	In Default apps, choose WordLogic for the document types you want it to open.	En Aplicaciones predeterminadas, elige WordLogic para los tipos de documento que quieras que abra.
 	Increase Font Size	Aumentar tamaño de fuente
 	Increase Indent	Aumentar sangría
 	Indent	Sangría
@@ -512,8 +508,6 @@
 	Inspect Styles at Selection	Inspeccionar estilos de la selección
 	Interface language:	Idioma de la interfaz:
 	Italic	Cursiva
-	Join the ArtCraft community on Discord	Únete a la comunidad de ArtCraft en Discord
-	Join us on Discord: discord.gg/artcraft	Únete a nosotros en Discord: discord.gg/artcraft
 	Justify	Justificar
 	Keep Lines Together	Mantener líneas juntas
 	Keep Text Only	Mantener solo el texto
@@ -526,7 +520,7 @@
 	Landscape	Horizontal
 	Language	Idioma
 	{language} (no dictionary)	{language} (sin diccionario)
-	No spelling dictionary for {language} is installed, so it isn't checked. WordCraft looks for the Hunspell dictionary {name} in the WORDCRAFT_DICTIONARIES folder and in the usual system locations.	No hay un diccionario ortográfico instalado para {language}, así que no se revisa. WordCraft busca el diccionario Hunspell {name} en la carpeta WORDCRAFT_DICTIONARIES y en las ubicaciones habituales del sistema.
+	No spelling dictionary for {language} is installed, so it isn't checked. WordLogic looks for the Hunspell dictionary {name} in the WORDCRAFT_DICTIONARIES folder and in the usual system locations.	No hay un diccionario ortográfico instalado para {language}, así que no se revisa. WordLogic busca el diccionario Hunspell {name} en la carpeta WORDCRAFT_DICTIONARIES y en las ubicaciones habituales del sistema.
 	Lasso	Lazo
 	Last Column	Última columna
 	Last commit	Último commit
@@ -556,10 +550,9 @@
 	Link to Previous	Vincular con el anterior
 	Links	Vínculos
 	Location: {path}	Ubicación: {path}
-	MIT OR Apache-2.0. Copyright (c) 2026 ArtCraft Team and the WordCraft contributors.	MIT o Apache-2.0. Copyright (c) 2026 ArtCraft Team y los colaboradores de WordCraft.
 	Macros	Macros
 	Mailings	Correspondencia
-	Make WordCraft the default for Word documents…	Hacer de WordCraft la aplicación predeterminada para documentos de Word…
+	Make WordLogic the default for Word documents…	Hacer de WordLogic la aplicación predeterminada para documentos de Word…
 	Manage Sources	Administrar fuentes
 	Many pages	Varias páginas
 	Margins	Márgenes
@@ -632,8 +625,8 @@
 	One Page	Una página
 	Open	Abrir
 	OpenDocument Text (*.odt)	Texto de OpenDocument (*.odt)
-	Opens .docx, .doc, .rtf and .odt files and Word templates with WordCraft from now on.	A partir de ahora, los archivos .docx, .doc, .rtf y .odt y las plantillas de Word se abren con WordCraft.
-	Opens Settings › Default apps, where you choose WordCraft for .docx and the other document types.	Abre Configuración › Aplicaciones predeterminadas, donde eliges WordCraft para .docx y los demás tipos de documento.
+	Opens .docx, .doc, .rtf and .odt files and Word templates with WordLogic from now on.	A partir de ahora, los archivos .docx, .doc, .rtf y .odt y las plantillas de Word se abren con WordLogic.
+	Opens Settings › Default apps, where you choose WordLogic for .docx and the other document types.	Abre Configuración › Aplicaciones predeterminadas, donde eliges WordLogic para .docx y los demás tipos de documento.
 	Optional Hyphen	Guion opcional
 	Copyright Sign	Signo de copyright
 	Ellipsis	Puntos suspensivos
@@ -846,7 +839,6 @@
 	Animation	Animación
 	Animate the caret (it glides and fades)	Animar el cursor (se desliza y se desvanece)
 	On: the caret glides to its new place when you type or use the arrow keys, and its blink fades. Off: it jumps and blinks on and off.	Activado: el cursor se desliza hasta su nueva posición al escribir o usar las flechas, y su parpadeo se desvanece. Desactivado: salta y parpadea de golpe.
-	Show the community button in the title bar	Mostrar el botón de comunidad en la barra de título
 	Show/Hide ¶	Mostrar u ocultar ¶
 	Show\nComments	Mostrar\ncomentarios
 	Shrink Font 1 Point	Reducir fuente 1 punto
@@ -862,7 +854,6 @@
 	Small caps	Versalitas
 	SmartArt	SmartArt
 	Sort	Ordenar
-	Source code: github.com/storytold/wordcraft	Código fuente: github.com/storytold/wordcraft
 	Space	Espacio
 	Space before/after:	Espacio antes y después:
 	Spacing	Espaciado
@@ -946,7 +937,7 @@
 	Tight	Ajustado
 	TOC Heading	Título de tabla de contenido
 	TOC {n}	Tabla de contenido {n}
-	To open Word documents with WordCraft by default: select one in Finder, choose File › Get Info, pick WordCraft under Open with, then click Change All.	Para abrir los documentos de Word con WordCraft de forma predeterminada: selecciona uno en el Finder, elige Archivo › Obtener información, selecciona WordCraft en «Abrir con» y haz clic en «Cambiar todo».
+	To open Word documents with WordLogic by default: select one in Finder, choose File › Get Info, pick WordLogic under Open with, then click Change All.	Para abrir los documentos de Word con WordLogic de forma predeterminada: selecciona uno en el Finder, elige Archivo › Obtener información, selecciona WordLogic en «Abrir con» y haz clic en «Cambiar todo».
 	Top Border	Borde superior
 	Top Margin	Margen superior
 	Top of Page	Parte superior de la página
@@ -1011,8 +1002,8 @@
 	Word XML Document (*.xml)	Documento XML de Word (*.xml)
 	Word 2003 XML Document (*.xml)	Documento XML de Word 2003 (*.xml)
 	WordArt	WordArt
-	WordCraft	WordCraft
-	WordCraft is now the default app for Word documents.	WordCraft es ahora la aplicación predeterminada para los documentos de Word.
+	WordLogic	WordLogic
+	WordLogic is now the default app for Word documents.	WordLogic es ahora la aplicación predeterminada para los documentos de Word.
 	Words	Palabras
 	Words only	Solo palabras
 	Wrap Text	Ajustar texto
@@ -1081,7 +1072,7 @@
 	Stopped	Detenido
 	Speed	Velocidad
 	Normal speed	Velocidad normal
-	AutoSave documents you have saved in WordCraft	Autoguardar los documentos que hayas guardado en WordCraft
+	AutoSave documents you have saved in WordLogic	Autoguardar los documentos que hayas guardado en WordLogic
 	AutoSave failed: {error}. Save the document to turn AutoSave back on.	Error de autoguardado: {error}. Guarda el documento para volver a activar el autoguardado.
 	Couldn't download {name}: {error}	No se pudo descargar {name}: {error}
 	Do you want to save changes to {name}?	¿Quieres guardar los cambios en {name}?
@@ -1251,7 +1242,6 @@
 	Insert a new equation (Alt+=)	Insertar una ecuación nueva (Alt+=)
 	Leave the equation (Esc)	Salir de la ecuación (Esc)
 	Preview	Vista previa
-	getartcraft.com/apps/wordcraft	getartcraft.com/apps/wordcraft
 	Draw Ink	Dibujar tinta
 	Erase Ink	Borrar tinta
 	Hide Ink	Ocultar tinta
@@ -1390,7 +1380,7 @@
 	The document will be saved with a password. Save it to protect it.	El documento se guardará con contraseña. Guárdalo para protegerlo.
 	The password is removed. Save the document to keep the change.	Se quitó la contraseña. Guarda el documento para conservar el cambio.
 	The passwords don't match.	Las contraseñas no coinciden.
-	Keep the password somewhere safe: without it nobody, WordCraft included, can open the document. Leave both boxes empty to remove the password.	Guarda la contraseña en un lugar seguro: sin ella nadie, ni siquiera WordCraft, puede abrir el documento. Deja ambos cuadros vacíos para quitar la contraseña.
+	Keep the password somewhere safe: without it nobody, WordLogic included, can open the document. Leave both boxes empty to remove the password.	Guarda la contraseña en un lugar seguro: sin ella nadie, ni siquiera WordLogic, puede abrir el documento. Deja ambos cuadros vacíos para quitar la contraseña.
 
 # Interface text routed through translation (#313)
 	Align Top Left	Alinear arriba a la izquierda
@@ -1787,7 +1777,7 @@
 	Word document	Documento de Word
 	All files	Todos los archivos
 	Recipient lists	Listas de destinatarios
-	The system file dialog isn't available, so WordCraft shows its own. To get the system dialog, install a file chooser portal (such as xdg-desktop-portal-gtk) or zenity.	El cuadro de diálogo de archivos del sistema no está disponible, así que WordCraft muestra el suyo. Para usar el del sistema, instala un portal selector de archivos (como xdg-desktop-portal-gtk) o zenity.
+	The system file dialog isn't available, so WordLogic shows its own. To get the system dialog, install a file chooser portal (such as xdg-desktop-portal-gtk) or zenity.	El cuadro de diálogo de archivos del sistema no está disponible, así que WordLogic muestra el suyo. Para usar el del sistema, instala un portal selector de archivos (como xdg-desktop-portal-gtk) o zenity.
 	Up one level	Subir un nivel
 	Home folder	Carpeta personal
 	{name} wasn't found.	No se encontró {name}.
@@ -1795,8 +1785,8 @@
 	This folder can't be read: {error}	No se puede leer esta carpeta: {error}
 	Showing the first {count} items.	Se muestran los primeros {count} elementos.
 	File name:	Nombre de archivo:
-	Browse in WordCraft…	Examinar en WordCraft…
-	Open a file with WordCraft's own browser when the system file dialog doesn't appear.	Abre un archivo con el explorador propio de WordCraft cuando no aparece el cuadro de diálogo de archivos del sistema.
+	Browse in WordLogic…	Examinar en WordLogic…
+	Open a file with WordLogic's own browser when the system file dialog doesn't appear.	Abre un archivo con el explorador propio de WordLogic cuando no aparece el cuadro de diálogo de archivos del sistema.
 	Hide White Space	Ocultar espacio en blanco
 	All pages	Todas las páginas
 	Current page	Página actual
@@ -2501,8 +2491,8 @@ preview	Title	Título
 	Number only, without the label's words	Solo el número, sin las palabras de la etiqueta
 	Add whether it is above or below	Añadir si está arriba o abajo
 	Start-up	Inicio de la aplicación
-	Show the Start screen when WordCraft starts	Mostrar la pantalla de inicio al abrir WordCraft
-	On: WordCraft opens on File › Home, with a blank document, the templates and your recent documents. Off: it opens a blank document.	Activado: WordCraft se abre en Archivo › Inicio, con un documento en blanco, las plantillas y tus documentos recientes. Desactivado: abre un documento en blanco.
+	Show the Start screen when WordLogic starts	Mostrar la pantalla de inicio al abrir WordLogic
+	On: WordLogic opens on File › Home, with a blank document, the templates and your recent documents. Off: it opens a blank document.	Activado: WordLogic se abre en Archivo › Inicio, con un documento en blanco, las plantillas y tus documentos recientes. Desactivado: abre un documento en blanco.
 	Copy to	Copiar en
 
 # Document naming and account controls.
@@ -2533,7 +2523,7 @@ preview	Title	Título
 	{name}   {height} × {width} mm	{name}   {height} × {width} mm
 	{width} × {height} mm	{width} × {height} mm
 	{kind}, {columns} × {rows}, {size} ({paper})	{kind}, {columns} × {rows}, {size} ({paper})
-	Researcher needs an online service; WordCraft keeps your documents offline.	Investigador necesita un servicio en línea; WordCraft mantiene tus documentos sin conexión.
+	Researcher needs an online service; WordLogic keeps your documents offline.	Investigador necesita un servicio en línea; WordLogic mantiene tus documentos sin conexión.
 	These settings will be used for new documents.	Esta configuración se usará para los documentos nuevos.
 	can't split at the first row	no se puede dividir la tabla en la primera fila
 	select two or more cells to merge	selecciona dos o más celdas para combinarlas
@@ -2599,3 +2589,14 @@ preview	Title	Título
 # Reading Mode column widths (#1040)
 	Narrow	Estrecha
 	Medium	Media
+
+# WordLogic: the About box and the Aegean Logic website button.
+	Aegean Logic	Aegean Logic
+	Visit www.aegeanlogic.co.uk	Visita www.aegeanlogic.co.uk
+	Aegean Logic website	Sitio web de Aegean Logic
+	Aegean Logic\nWebsite	Sitio web de\nAegean Logic
+	Show the Aegean Logic button in the title bar	Mostrar el botón de Aegean Logic en la barra de título
+	by Aegean Logic	de Aegean Logic
+	A free, open-source word processor written from scratch in Rust, based on WordCraft.	Un procesador de textos gratuito y de código abierto, escrito desde cero en Rust, basado en WordCraft.
+	www.aegeanlogic.co.uk	www.aegeanlogic.co.uk
+	MIT OR Apache-2.0. Copyright (c) 2026 Aegean Logic. Based on WordCraft, copyright (c) 2026 ArtCraft Team and the WordCraft contributors.	MIT o Apache-2.0. Copyright (c) 2026 Aegean Logic. Basado en WordCraft, copyright (c) 2026 ArtCraft Team y los colaboradores de WordCraft.

@@ -1,6 +1,6 @@
 # Local document recovery
 
-Desktop WordCraft periodically keeps a local copy of unsaved work, including new drafts.
+Desktop WordLogic periodically keeps a local copy of unsaved work, including new drafts.
 File › Recover lists available copies. The page opens at startup when copies are found.
 Restore opens an unsaved document with no file path. Save As chooses where to keep it.
 Recovery never writes to the original document. AutoSave's permission to write to an earlier

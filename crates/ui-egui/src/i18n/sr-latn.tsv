@@ -15,10 +15,9 @@
 	(no suggestions)	(nema predloga)
 	(picture or object)	(slika ili objekat)
 	1.5 Line Spacing	Proređenost 1,5
-	A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team.	Besplatan, otvoreni obrađivač teksta napisan od nule u Rust-u.\nDeo Crafting Apps paketa tima ArtCraft.
 	A password is required to open this document.	Za otvaranje ovog dokumenta potrebna je lozinka.
 	About	O programu
-	About WordCraft	O WordCraft-u
+	About WordLogic	O WordLogic-u
 	Accept	Prihvati
 	Accept All Changes	Prihvati sve izmene
 	Accept This Change	Prihvati ovu izmenu
@@ -80,7 +79,7 @@
 	Automatic Table 1 (3 levels)	Automatska tabela 1 (3 nivoa)
 	Automatic Table 2 (2 levels)	Automatska tabela 2 (2 nivoa)
 	AutoSave	Automatsko čuvanje
-	AutoSave documents you have saved in WordCraft	Automatski čuvaj dokumente koje ste već sačuvali u WordCraft-u
+	AutoSave documents you have saved in WordLogic	Automatski čuvaj dokumente koje ste već sačuvali u WordLogic-u
 	AutoSave failed: {error}. Save the document to turn AutoSave back on.	Automatsko čuvanje neuspelo: {error}. Sačuvajte dokument da biste ga ponovo uključili.
 	Balloons	Oblačići
 	Bottom Margin	Donja margina
@@ -104,7 +103,7 @@
 	Color: {color}	Boja: {color}
 	Compress punctuation at the start of a line	Sažmi interpunkciju na početku reda
 	Confirm password:	Potvrdite lozinku:
-	Couldn't make WordCraft the default: {error}	WordCraft nije mogao da postane podrazumevana aplikacija: {error}
+	Couldn't make WordLogic the default: {error}	WordLogic nije mogao da postane podrazumevana aplikacija: {error}
 	Custom dictionary	Prilagođeni rečnik
 	Dark page (white text on black)	Tamna stranica (beo tekst na crnom)
 	Drag a rectangle to draw a table, or a line across cells to split them. Esc stops.	Prevucite pravougaonik da nacrtate tabelu ili liniju preko ćelija da ih podelite. Esc završava.
@@ -152,10 +151,10 @@
 	Number style for this level:	Stil broja za ovaj nivo:
 	Only for the selected text	Samo za izabrani tekst
 	Outside border	Spoljna ivica
-	In Default apps, choose WordCraft for the document types you want it to open.	U podrazumevanim aplikacijama izaberite WordCraft za vrste dokumenata koje želite da otvara.
-	Make WordCraft the default for Word documents…	Postavi WordCraft kao podrazumevanu aplikaciju za Word dokumente…
-	Opens .docx, .doc, .rtf and .odt files and Word templates with WordCraft from now on.	Od sada će se .docx, .doc, .rtf i .odt datoteke i Word šabloni otvarati u WordCraft-u.
-	Opens Settings › Default apps, where you choose WordCraft for .docx and the other document types.	Otvara Podešavanja › Podrazumevane aplikacije, gde birate WordCraft za .docx i druge vrste dokumenata.
+	In Default apps, choose WordLogic for the document types you want it to open.	U podrazumevanim aplikacijama izaberite WordLogic za vrste dokumenata koje želite da otvara.
+	Make WordLogic the default for Word documents…	Postavi WordLogic kao podrazumevanu aplikaciju za Word dokumente…
+	Opens .docx, .doc, .rtf and .odt files and Word templates with WordLogic from now on.	Od sada će se .docx, .doc, .rtf i .odt datoteke i Word šabloni otvarati u WordLogic-u.
+	Opens Settings › Default apps, where you choose WordLogic for .docx and the other document types.	Otvara Podešavanja › Podrazumevane aplikacije, gde birate WordLogic za .docx i druge vrste dokumenata.
 	Overtype	Prepisivanje
 	Overtype (typing replaces the characters after the caret)	Prepisivanje (otkucano zamenjuje znakove posle kursora)
 	Show alignment guides when moving pictures and shapes	Prikazuj vodilje za poravnanje pri pomeranju slika i oblika
@@ -183,7 +182,7 @@
 	Glow Colors	Boje sjaja
 	Hide from style lists	Sakrij sa lista stilova
 	Indents and Spacing	Uvlačenja i razmaci
-	Keep the password somewhere safe: without it nobody, WordCraft included, can open the document. Leave both boxes empty to remove the password.	Čuvajte lozinku na sigurnom mestu: bez nje niko, pa ni WordCraft, ne može da otvori dokument. Ostavite oba polja prazna da biste uklonili lozinku.
+	Keep the password somewhere safe: without it nobody, WordLogic included, can open the document. Leave both boxes empty to remove the password.	Čuvajte lozinku na sigurnom mestu: bez nje niko, pa ni WordLogic, ne može da otvori dokument. Ostavite oba polja prazna da biste uklonili lozinku.
 	Line breaking	Prelom redova
 	Linked style (paragraph and character)	Povezani stil (pasus i znakovi)
 	Manage Styles	Upravljanje stilovima
@@ -335,7 +334,6 @@
 	Comment	Komentar
 	Comments	Komentari
 	Comments Pane	Okno komentara
-	Community\nDiscord	Zajednica\nna Discord-u
 	Compact	Sažeto
 	Compare	Upoređivanje
 	Compress Pictures	Kompresuj slike
@@ -382,16 +380,14 @@
 	Delete Style	Obriši stil
 	Delete Table	Obriši tabelu
 	Design	Dizajn
-	To open Word documents with WordCraft by default: select one in Finder, choose File › Get Info, pick WordCraft under Open with, then click Change All.	Da bi se Word dokumenti podrazumevano otvarali u WordCraft-u: izaberite jedan u Finder-u, izaberite Datoteka › Prikaži informacije, pod „Otvori pomoću” izaberite WordCraft, pa kliknite „Promeni sve”.
-	WordCraft is now the default app for Word documents.	WordCraft je sada podrazumevana aplikacija za Word dokumente.
+	To open Word documents with WordLogic by default: select one in Finder, choose File › Get Info, pick WordLogic under Open with, then click Change All.	Da bi se Word dokumenti podrazumevano otvarali u WordLogic-u: izaberite jedan u Finder-u, izaberite Datoteka › Prikaži informacije, pod „Otvori pomoću” izaberite WordLogic, pa kliknite „Promeni sve”.
+	WordLogic is now the default app for Word documents.	WordLogic je sada podrazumevana aplikacija za Word dokumente.
 	development build	razvojna verzija
 	Diagonal	Dijagonalno
 	Diamond	Dijamant
 	Dictate	Diktiranje
 	Different First Page	Drugačija prva strana
 	Different Odd & Even Pages	Drugačije neparne i parne strane
-	Discord	Discord
-	Discord community	Zajednica na Discord-u
 	Display	Prikaz
 	Display for Review	Prikaz za pregled
 	Distribute Columns	Ravnomerno razmesti kolone
@@ -550,8 +546,6 @@
 	Inspect Document	Pregledaj dokument
 	Interface language:	Jezik interfejsa:
 	Italic	Kurziv
-	Join the ArtCraft community on Discord	Pridružite se ArtCraft zajednici na Discord-u
-	Join us on Discord: discord.gg/artcraft	Pridružite nam se na Discord-u: discord.gg/artcraft
 	Justify	Obostrano poravnanje
 	Keep Lines Together	Zadrži redove zajedno
 	Keep lines together	Zadrži redove zajedno
@@ -562,7 +556,7 @@
 	Landscape	Položeno
 	Language	Jezik
 	{language} (no dictionary)	{language} (nema rečnika)
-	No spelling dictionary for {language} is installed, so it isn't checked. WordCraft looks for the Hunspell dictionary {name} in the WORDCRAFT_DICTIONARIES folder and in the usual system locations.	Pravopisni rečnik za {language} nije instaliran, pa se tekst ne proverava. WordCraft traži Hunspell rečnik {name} u fascikli WORDCRAFT_DICTIONARIES i na uobičajenim sistemskim lokacijama.
+	No spelling dictionary for {language} is installed, so it isn't checked. WordLogic looks for the Hunspell dictionary {name} in the WORDCRAFT_DICTIONARIES folder and in the usual system locations.	Pravopisni rečnik za {language} nije instaliran, pa se tekst ne proverava. WordLogic traži Hunspell rečnik {name} u fascikli WORDCRAFT_DICTIONARIES i na uobičajenim sistemskim lokacijama.
 	Lasso	Laso
 	Last Column	Zadnja kolona
 	Last commit	Zadnji commit
@@ -609,7 +603,6 @@
 	Merge Formatting	Spoji formatiranje
 	Merged PRs	Spojeni PR-ovi
 	Mirrored	Zrcaljeno
-	MIT OR Apache-2.0. Copyright (c) 2026 ArtCraft Team and the WordCraft contributors.	MIT OR Apache-2.0. Autorska prava (c) 2026 ArtCraft Team i saradnici na WordCraft-u.
 	Moderate	Umereno
 	Modify Style	Izmeni stil
 	Modify…	Izmeni…
@@ -859,7 +852,6 @@
 	Animation	Animacija
 	Animate the caret (it glides and fades)	Animiraj kursor (klizi i postepeno se gasi)
 	On: the caret glides to its new place when you type or use the arrow keys, and its blink fades. Off: it jumps and blinks on and off.	Uključeno: kursor klizi na novo mesto dok kucate ili koristite strelice, a njegovo treptanje se postepeno gasi. Isključeno: skače i trepće naglo.
-	Show the community button in the title bar	Prikaži dugme zajednice u traci naslova
 	Show/Hide ¶	Prikaži/sakrij ¶
 	Show\nComments	Prikaži\nkomentare
 	Shrink Font 1 Point	Smanji font za 1 tačku
@@ -877,7 +869,6 @@
 	Soft Edges	Meke ivice
 	Sort	Sortiraj
 	Sort order:	Redosled sortiranja:
-	Source code: github.com/storytold/wordcraft	Izvorni kod: github.com/storytold/wordcraft
 	Space	Razmak
 	Space after: {pt} pt	Razmak posle: {pt} pt
 	Space before/after:	Razmak pre/posle:
@@ -1024,7 +1015,7 @@
 	Word Left	Reč levo
 	Word Right	Reč desno
 	WordArt	WordArt
-	WordCraft	WordCraft
+	WordLogic	WordLogic
 	Words	Reči
 	Words only	Samo reči
 	Wrap Text	Prelomi tekst
@@ -1278,7 +1269,6 @@
 	Reset Crop	Poništi isecanje
 	Insert a new equation (Alt+=)	Umetni novu jednačinu (Alt+=)
 	Leave the equation (Esc)	Napusti jednačinu (Esc)
-	getartcraft.com/apps/wordcraft	getartcraft.com/apps/wordcraft
 	Draw Ink	Crtaj mastilom
 	Erase Ink	Obriši mastilo
 	Hide Ink	Sakrij mastilo
@@ -1757,7 +1747,7 @@
 	Word document	Word dokument
 	All files	Sve datoteke
 	Recipient lists	Liste primalaca
-	The system file dialog isn't available, so WordCraft shows its own. To get the system dialog, install a file chooser portal (such as xdg-desktop-portal-gtk) or zenity.	Sistemski dijalog za datoteke nije dostupan, pa WordCraft prikazuje svoj. Da biste dobili sistemski dijalog, instalirajte portal za izbor datoteka (na primer xdg-desktop-portal-gtk) ili zenity.
+	The system file dialog isn't available, so WordLogic shows its own. To get the system dialog, install a file chooser portal (such as xdg-desktop-portal-gtk) or zenity.	Sistemski dijalog za datoteke nije dostupan, pa WordLogic prikazuje svoj. Da biste dobili sistemski dijalog, instalirajte portal za izbor datoteka (na primer xdg-desktop-portal-gtk) ili zenity.
 	Up one level	Jedan nivo gore
 	Home folder	Lična fascikla
 	{name} wasn't found.	{name} nije pronađen.
@@ -1765,8 +1755,8 @@
 	This folder can't be read: {error}	Ova fascikla ne može da se pročita: {error}
 	Showing the first {count} items.	Prikazane su samo prve stavke: {count}.
 	File name:	Ime datoteke:
-	Browse in WordCraft…	Potraži u WordCraft-u…
-	Open a file with WordCraft's own browser when the system file dialog doesn't appear.	Otvorite datoteku pomoću WordCraft-ovog pregledača kada se sistemski dijalog za datoteke ne pojavi.
+	Browse in WordLogic…	Potraži u WordLogic-u…
+	Open a file with WordLogic's own browser when the system file dialog doesn't appear.	Otvorite datoteku pomoću WordLogic-ovog pregledača kada se sistemski dijalog za datoteke ne pojavi.
 	Hide White Space	Sakrij prazan prostor
 	All pages	Sve stranice
 	Current page	Trenutna stranica
@@ -2145,8 +2135,8 @@
 	Number only, without the label's words	Samo broj, bez reči iz oznake
 	Add whether it is above or below	Dodaj da li je iznad ili ispod
 	Start-up	Pokretanje
-	Show the Start screen when WordCraft starts	Prikaži početni ekran pri pokretanju programa WordCraft
-	On: WordCraft opens on File › Home, with a blank document, the templates and your recent documents. Off: it opens a blank document.	Uključeno: WordCraft se otvara na Fajl › Početak, sa praznim dokumentom, šablonima i nedavnim dokumentima. Isključeno: otvara prazan dokument.
+	Show the Start screen when WordLogic starts	Prikaži početni ekran pri pokretanju programa WordLogic
+	On: WordLogic opens on File › Home, with a blank document, the templates and your recent documents. Off: it opens a blank document.	Uključeno: WordLogic se otvara na Fajl › Početak, sa praznim dokumentom, šablonima i nedavnim dokumentima. Isključeno: otvara prazan dokument.
 	Copy to	Kopiraj u
 
 # Document naming and account controls.
@@ -2177,7 +2167,7 @@
 	{name}   {height} × {width} mm	{name}   {height} × {width} mm
 	{width} × {height} mm	{width} × {height} mm
 	{kind}, {columns} × {rows}, {size} ({paper})	{kind}, {columns} × {rows}, {size} ({paper})
-	Researcher needs an online service; WordCraft keeps your documents offline.	Istraživaču je potrebna usluga na mreži, a WordCraft vaše dokumente čuva van mreže.
+	Researcher needs an online service; WordLogic keeps your documents offline.	Istraživaču je potrebna usluga na mreži, a WordLogic vaše dokumente čuva van mreže.
 	These settings will be used for new documents.	Ova podešavanja će se koristiti za nove dokumente.
 	can't split at the first row	tabela ne može da se podeli kod prvog reda
 	select two or more cells to merge	izaberite dve ili više ćelija za spajanje
@@ -2243,3 +2233,14 @@
 # Reading Mode column widths (#1040)
 	Narrow	Uska
 	Medium	Srednja
+
+# WordLogic: the About box and the Aegean Logic website button.
+	Aegean Logic	Aegean Logic
+	Visit www.aegeanlogic.co.uk	Posetite www.aegeanlogic.co.uk
+	Aegean Logic website	Veb-sajt kompanije Aegean Logic
+	Aegean Logic\nWebsite	Veb-sajt\nAegean Logic
+	Show the Aegean Logic button in the title bar	Prikaži dugme Aegean Logic u traci naslova
+	by Aegean Logic	od kompanije Aegean Logic
+	A free, open-source word processor written from scratch in Rust, based on WordCraft.	Besplatan, otvoreni obrađivač teksta napisan od nule u Rust-u, zasnovan na WordCraft-u.
+	www.aegeanlogic.co.uk	www.aegeanlogic.co.uk
+	MIT OR Apache-2.0. Copyright (c) 2026 Aegean Logic. Based on WordCraft, copyright (c) 2026 ArtCraft Team and the WordCraft contributors.	MIT OR Apache-2.0. Autorska prava (c) 2026 Aegean Logic. Zasnovano na WordCraft-u, autorska prava (c) 2026 ArtCraft Team i saradnici na WordCraft-u.

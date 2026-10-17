@@ -362,9 +362,9 @@ impl Bridge {
                 Ok(Value::Null)
             }
             "Document_importDocument" | "Document_exportDocument" => {
-                Err("WordCraft doesn't support Zotero's document transfer; the citations are already stored the way Word keeps them".into())
+                Err("WordLogic doesn't support Zotero's document transfer; the citations are already stored the way Word keeps them".into())
             }
-            m => Err(format!("WordCraft doesn't support {m}")),
+            m => Err(format!("WordLogic doesn't support {m}")),
         }
     }
 

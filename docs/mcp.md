@@ -1,6 +1,6 @@
 # MCP server
 
-WordCraft speaks the [Model Context Protocol](https://modelcontextprotocol.io) over stdio, so
+WordLogic speaks the [Model Context Protocol](https://modelcontextprotocol.io) over stdio, so
 Claude and other agents can write and edit documents.
 
 ```sh
@@ -17,7 +17,7 @@ loopback addresses; see [Keys](control-protocol.md#keys).
 
 ## Tracked changes by an agent
 
-Tracked changes and comments are recorded under the session's user name ("WordCraft User" by
+Tracked changes and comments are recorded under the session's user name ("WordLogic User" by
 default). Name the agent so reviewers can tell its edits from people's: start the headless server
 with `wordcraft-cli mcp --author "Claude (copyedit)"`, or run
 `file.setAuthor {"name": "Claude (copyedit)"}`. Turn tracking on explicitly with
@@ -64,7 +64,7 @@ config works across the suite) keep the agent to the folders you give it:
   given once (`--flag <dir>` or `--flag=<dir>`).
 
 The flags confine the headless server; `--connect` with them is an error, since the server would
-otherwise talk to an app that isn't confined. WordCraft's desktop app has no equivalent flags yet,
+otherwise talk to an app that isn't confined. WordLogic's desktop app has no equivalent flags yet,
 so a running app (`wordcraft --control`) is not confined.
 
 What the roots do not cover: commands that take no path (`text.insert`, `execute` of anything that

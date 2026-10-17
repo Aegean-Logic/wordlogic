@@ -7,13 +7,13 @@
   <key>CFBundleDevelopmentRegion</key>
   <string>en</string>
   <key>CFBundleDisplayName</key>
-  <string>WordCraft</string>
+  <string>WordLogic</string>
   <key>CFBundleName</key>
-  <string>WordCraft</string>
+  <string>WordLogic</string>
   <key>CFBundleExecutable</key>
-  <string>WordCraft</string>
+  <string>WordLogic</string>
   <key>CFBundleIdentifier</key>
-  <string>ai.storyteller.wordcraft</string>
+  <string>uk.co.aegeanlogic.wordlogic</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundlePackageType</key>
@@ -24,12 +24,12 @@
   <string>@SHORT_VERSION@</string>
   <key>CFBundleVersion</key>
   <string>@SHORT_VERSION@</string>
-  <key>WordCraftVersion</key>
+  <key>WordLogicVersion</key>
   <string>@VERSION@</string>
-  <key>WordCraftBuildCommit</key>
+  <key>WordLogicBuildCommit</key>
   <string>@BUILD_SHA@</string>
   <key>CFBundleIconFile</key>
-  <string>WordCraft</string>
+  <string>WordLogic</string>
   <key>LSApplicationCategoryType</key>
   <string>public.app-category.productivity</string>
   <!-- Must match MACOSX_DEPLOYMENT_TARGET in package.sh. Big Sur is the first release on
@@ -43,9 +43,9 @@
   <key>NSRequiresAquaSystemAppearance</key>
   <false/>
   <key>NSHumanReadableCopyright</key>
-  <string>Copyright © the WordCraft authors. MIT OR Apache-2.0.</string>
+  <string>Copyright © Aegean Logic and the WordCraft authors. MIT OR Apache-2.0.</string>
 
-  <!-- Documents WordCraft opens (system type declarations). -->
+  <!-- Documents WordLogic opens (system type declarations). -->
   <key>CFBundleDocumentTypes</key>
   <array>
     <dict>

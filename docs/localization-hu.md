@@ -1,6 +1,6 @@
 # Hungarian interface
 
-> **Last reviewed:** 2026-10-11 · **Last updated:** 2026-10-11 · **Change:** minor (Hungarian interface catalog and regression checks) · **Target:** WordCraft 0.5.0
+> **Last reviewed:** 2026-10-11 · **Last updated:** 2026-10-11 · **Change:** minor (Hungarian interface catalog and regression checks) · **Target:** WordLogic 0.5.0
 
 Choose **File › Options › Interface language › Magyar**, or follow a Hungarian system display
 language (`hu-HU`, `hu_HU.UTF-8`). The catalog code is `hu`; `ui.language` with `{"value":"hu"}`
@@ -52,7 +52,7 @@ kept, and strings added later fall back to English until they are translated.
 | Ribbon / Pane / Quick Access Toolbar | Menüszalag / Panel / Gyorselérési eszköztár |
 | Proofing / Word Count | Nyelvi ellenőrzés / Szavak száma |
 
-Product and format names stay as they are (WordCraft, PDF, DOCX, Markdown, MCP, Zotero). The Font
+Product and format names stay as they are (WordLogic, PDF, DOCX, Markdown, MCP, Zotero). The Font
 dialog's preview sample is `AaBbYyZz ŐőŰű`, so the All Caps preview shows the Hungarian double
 acute capitals.
 
