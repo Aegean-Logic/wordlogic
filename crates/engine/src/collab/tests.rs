@@ -29,40 +29,35 @@ impl Server {
         true
     }
 
-    /// Delivers the next entry `s` hasn't had.
+    /// Delivers the next entry `s` hasn't had. With `check`, also proves the copies agree on the
+    /// log and that `s` shows its confirmed document with its pending edits on top.
     fn deliver_one(&self, s: &mut Session) -> bool {
         let next = s.collab_seq().unwrap_or(0) as usize;
-        match self.log.get(next) {
-            Some(e) => {
-                s.collab_receive(e.clone()).unwrap_or_else(|e| panic!("receive {next}: {e}"));
-                if self.check {
-                    let (seq, d) = s.collab_confirmed().unwrap();
-                    let c = canonical(d);
-                    let t = d.plain_text(StoryRef::Body);
-                    let mut seen = self.seen.borrow_mut();
-                    match seen.get(&seq) {
-                        Some((c0, t0)) => assert!(
-                            *c0 == c,
-                            "copies disagree after entry {seq} (client {}, base {}):
-{t0:?}
-vs
-{t:?}
-op: {}
-prev: {:?}",
-                            e.client,
-                            e.base,
-                            serde_json::to_string(&e.op).unwrap(),
-                            seen.get(&(seq - 1)).map(|x| &x.1)
-                        ),
-                        None => {
-                            seen.insert(seq, (c, t));
-                        }
-                    }
-                }
-                true
-            }
-            None => false,
+        let Some(e) = self.log.get(next) else { return false };
+        s.collab_receive(e.clone()).unwrap_or_else(|err| panic!("receive {next}: {err}"));
+        if !self.check {
+            return true;
         }
+        let (seq, d) = s.collab_confirmed().unwrap();
+        let (c, t) = (canonical(d), d.plain_text(StoryRef::Body));
+        let mut seen = self.seen.borrow_mut();
+        match seen.get(&seq) {
+            Some((c0, t0)) => assert!(*c0 == c, "copies disagree after entry {seq}: {t0:?} vs {t:?}\nop: {}", serde_json::to_string(&e.op).unwrap()),
+            None => {
+                seen.insert(seq, (c, t));
+            }
+        }
+        // With nothing of this person's unconfirmed, they see exactly what the server has.
+        if !s.collab_pending() {
+            let want = canonical(s.collab_confirmed().unwrap().1);
+            assert!(
+                canonical(&s.doc) == want,
+                "shows something else at entry {seq}: {}\nentry: {}",
+                first_diff(&want, &canonical(&s.doc)),
+                serde_json::to_string(e).unwrap()
+            );
+        }
+        true
     }
 
     /// Everything sent and delivered, until nobody has anything left.
@@ -117,29 +112,9 @@ fn text(s: &Session) -> String {
 /// A document as co-editing compares it: stories as units, revisions by value, keyed lists by
 /// key, without each person's own settings.
 fn canonical(d: &Document) -> Value {
-    let revs = |mut items: Vec<Item>| -> Value {
-        let mut op = Op {
-            stories: vec![StoryEdit { story: StoryRef::Body, delta: Delta(vec![Comp::Insert { items: std::mem::take(&mut items) }]) }],
-            ..Op::default()
-        };
-        for_each_payload(&mut op, &mut |m| {
-            remap_revs(m, &mut |i| {
-                // Hash the revision into the number so equal revisions compare equal.
-                let r = d.revisions.get(i as usize).map(|r| format!("{}{}{:?}", r.author, r.date, r.kind)).unwrap_or_default();
-                r.bytes().fold(7u32, |h, b| h.wrapping_mul(31).wrapping_add(u32::from(b)))
-            })
-        });
-        // Runs whose revisions turned out equal by value are one run.
-        let Some(Comp::Insert { items }) = op.stories.pop().and_then(|s| s.delta.0.into_iter().next()) else { return json!([]) };
-        let mut merged = Vec::new();
-        for it in items {
-            delta::push_item(&mut merged, it);
-        }
-        serde_json::to_value(&merged).unwrap()
-    };
     let mut parts = serde_json::Map::new();
     for (id, p) in &d.parts {
-        parts.insert(id.to_string(), json!({"kind": p.kind, "body": p.body, "story": revs(story::story_items(&p.blocks).unwrap())}));
+        parts.insert(id.to_string(), json!({"kind": p.kind, "body": p.body, "story": canon_items(&p.blocks, d)}));
     }
     let mut rest = d.clone();
     rest.body.clear();
@@ -151,7 +126,50 @@ fn canonical(d: &Document) -> Value {
     rest.numbering.nums.sort_by_key(|n| n.id);
     rest.sources.sort_by(|a, b| a.tag.cmp(&b.tag));
     rest.custom_props.sort_by(|a, b| a.name.cmp(&b.name));
-    json!({"body": revs(story::story_items(&d.body).unwrap()), "parts": parts, "rest": rest})
+    json!({"body": canon_items(&d.body, d), "parts": parts, "rest": rest})
+}
+
+/// A story as units, with revisions by value (hashed) and runs that are equal by value joined;
+/// tables cell by cell the same way.
+fn canon_items(blocks: &[std::sync::Arc<Block>], d: &Document) -> Value {
+    let hash = |i: u32| {
+        let r = d.revisions.get(i as usize).map(|r| format!("{}{}{:?}{:?}", r.author, r.date, r.kind, r.move_name)).unwrap_or_default();
+        r.bytes().fold(7u32, |h, b| h.wrapping_mul(31).wrapping_add(u32::from(b)))
+    };
+    let by_value = |v: &mut Value| remap_json(v, &mut |i| hash(i));
+    let mut out: Vec<Item> = Vec::new();
+    for b in blocks {
+        match &**b {
+            Block::Para(_) => {
+                for it in story::story_items(std::slice::from_ref(b)).unwrap() {
+                    let mut v = serde_json::to_value(&it).unwrap();
+                    by_value(&mut v);
+                    delta::push_item(&mut out, serde_json::from_value(v).unwrap());
+                }
+            }
+            Block::Table(t) => {
+                let props = |p: Value| {
+                    let mut p = p;
+                    by_value(&mut p);
+                    p
+                };
+                let rows: Vec<Value> = t
+                    .rows
+                    .iter()
+                    .map(|r| {
+                        let cells: Vec<Value> = r
+                            .cells
+                            .iter()
+                            .map(|c| json!({"props": props(json!(c.props)), "controls": c.controls, "story": canon_items(&c.blocks, d)}))
+                            .collect();
+                        json!({"props": props(json!(r.props)), "controls": r.controls, "cells": cells})
+                    })
+                    .collect();
+                out.push(Item::Table { v: json!({"props": props(json!(t.props)), "grid": t.grid, "controls": t.controls, "rows": rows}) });
+            }
+        }
+    }
+    serde_json::to_value(&out).unwrap()
 }
 
 fn assert_same(all: &[Session]) {
@@ -396,12 +414,53 @@ impl Rng {
 
 /// A random place in the body (a paragraph at the top level, at a character boundary).
 fn random_pos(s: &Session, r: &mut Rng) -> Pos {
-    let paras: Vec<(usize, usize)> = s.doc.body.iter().enumerate().filter_map(|(i, b)| b.as_para().map(|p| (i, p.text.chars().count()))).collect();
-    let (i, n) = paras[r.below(paras.len())];
-    let p = s.doc.body[i].as_para().unwrap();
-    let k = r.below(n + 1);
+    // Every paragraph at the top level and in top-level tables' cells.
+    let mut paras: Vec<(Path, &wordcraft_doc::Paragraph)> = Vec::new();
+    for (i, b) in s.doc.body.iter().enumerate() {
+        match &**b {
+            Block::Para(p) => paras.push((Path::top(i), p)),
+            Block::Table(t) => {
+                for (ri, row) in t.rows.iter().enumerate() {
+                    for (ci, cell) in row.cells.iter().enumerate() {
+                        for (bi, cb) in cell.blocks.iter().enumerate() {
+                            if let Block::Para(p) = &**cb {
+                                paras.push((Path(vec![i as u32, ri as u32, ci as u32, bi as u32]), p));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    let (path, p) = paras[r.below(paras.len())].clone();
+    let k = r.below(p.text.chars().count() + 1);
     let off = p.text.char_indices().nth(k).map_or(p.text.len(), |(o, _)| o);
-    Pos::new(StoryRef::Body, Path::top(i), off)
+    Pos::new(StoryRef::Body, path, off)
+}
+
+/// A document with a 2×2 table between paragraphs.
+fn doc_with_table() -> Document {
+    let mut s = Session::new(doc(&["The quick brown fox", "jumps over", "the lazy dog"]));
+    at(&mut s, 0, 19);
+    run(&mut s, "insert.table", json!({"rows": 2, "cols": 2}));
+    s.doc
+}
+
+#[test]
+fn typing_in_different_cells_of_one_table() {
+    let mut srv = Server::new();
+    let start = doc_with_table();
+    let t = start.body.iter().position(|b| matches!(**b, Block::Table(_))).unwrap() as u32;
+    let mut p = people(&start, 2);
+    p[0].sel = Selection::caret(Pos::new(StoryRef::Body, Path(vec![t, 0, 0, 0]), 0));
+    run(&mut p[0], "text.insert", json!({"text": "top left"}));
+    p[1].sel = Selection::caret(Pos::new(StoryRef::Body, Path(vec![t, 1, 1, 0]), 0));
+    run(&mut p[1], "text.insert", json!({"text": "bottom right"}));
+    srv.settle(&mut p);
+    assert_same(&p);
+    let Block::Table(table) = &*p[0].doc.body[t as usize] else { panic!("no table") };
+    let cell = |r: usize, c: usize| table.rows[r].cells[c].blocks[0].as_para().unwrap().text.clone();
+    assert_eq!((cell(0, 0), cell(1, 1)), ("top left".to_string(), "bottom right".to_string()));
 }
 
 fn random_edit(s: &mut Session, r: &mut Rng) {
@@ -436,7 +495,7 @@ fn random_edit(s: &mut Session, r: &mut Rng) {
 
 fn fuzz(seed: u64, steps: usize, n: u64) {
     let mut r = Rng(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1);
-    let start = doc(&["The quick brown fox", "jumps over", "the lazy dog"]);
+    let start = if seed.is_multiple_of(2) { doc_with_table() } else { doc(&["The quick brown fox", "jumps over", "the lazy dog"]) };
     let mut p = people(&start, n);
     let mut srv = Server::new();
     for _ in 0..steps {
@@ -456,8 +515,8 @@ fn fuzz(seed: u64, steps: usize, n: u64) {
             }
         }
         if srv.check {
-            for (i, s) in p.iter().enumerate() {
-                let want = s.collab.as_ref().unwrap().replica.expected();
+            for (i, s) in p.iter().enumerate().filter(|(_, s)| !s.collab_pending()) {
+                let want = s.collab_confirmed().unwrap().1.clone();
                 assert!(
                     canonical(&s.doc) == canonical(&want),
                     "copy {} drifted after {kind_name} by copy {} (last command {last}): {}",
@@ -474,7 +533,7 @@ fn fuzz(seed: u64, steps: usize, n: u64) {
             canonical(&s.doc) == canonical(s.collab_confirmed().unwrap().1),
             "seed {seed}: copy {} shows something else than it has confirmed: {}",
             i + 1,
-            serde_json::to_string(&capture(s.collab_confirmed().unwrap().1, &s.doc).unwrap()).unwrap()
+            first_diff(&canonical(s.collab_confirmed().unwrap().1), &canonical(&s.doc))
         );
     }
     let first = canonical(&p[0].doc);
@@ -524,9 +583,9 @@ fn transform_satisfies_tp1_on_text() {
     let applied = |d: &[&Delta]| {
         let mut s = segs();
         for x in d {
-            s = apply_segs(s, &x.0).unwrap();
+            s = apply_segs(s, &x.0).unwrap().0;
         }
-        let blocks = blocks_from_segs(s);
+        let blocks = blocks_from_segs(s).0;
         serde_json::to_value(story::story_items(&blocks).unwrap()).unwrap()
     };
     for a in &cases {
@@ -548,9 +607,9 @@ fn compose_is_applying_one_then_the_other() {
     let b = Delta(vec![Comp::Retain { n: 3 }, Comp::Delete { n: 2 }, ins("Z")]);
     let mut s: Vec<Seg> = Vec::new();
     push_segs(&base.body, &mut s);
-    let one = apply_segs(apply_segs(s.clone(), &a.0).unwrap(), &b.0).unwrap();
-    let both = apply_segs(s, &compose(&a, &b).unwrap().0).unwrap();
-    assert_eq!(blocks_from_segs(one), blocks_from_segs(both));
+    let one = apply_segs(apply_segs(s.clone(), &a.0).unwrap().0, &b.0).unwrap().0;
+    let both = apply_segs(s, &compose(&a, &b).unwrap().0).unwrap().0;
+    assert_eq!(blocks_from_segs(one).0, blocks_from_segs(both).0);
 }
 
 /// Where two JSON values first differ, with some context.
@@ -560,4 +619,27 @@ fn first_diff(a: &Value, b: &Value) -> String {
     let from = at.saturating_sub(200);
     let cut = |s: &str| s.get(from..(at + 200).min(s.len())).unwrap_or("").to_string();
     format!("at {at}:\n{}\nvs\n{}", cut(&a), cut(&b))
+}
+
+/// Typing in a long shared document stays fast: each keystroke is diffed, inverted for undo and
+/// sent without touching the rest of the document. (`cargo test --release -- --ignored collab::tests::typing_in_a_long_document`)
+#[test]
+#[ignore]
+fn typing_in_a_long_document() {
+    let lines: Vec<String> = (0..5000).map(|i| format!("Paragraph {i} with some ordinary text in it, long enough to wrap.")).collect();
+    let refs: Vec<&str> = lines.iter().map(String::as_str).collect();
+    let mut srv = Server::new();
+    let mut p = people(&doc(&refs), 2);
+    at(&mut p[0], 2500, 10);
+    let t = std::time::Instant::now();
+    for _ in 0..200 {
+        run(&mut p[0], "text.insert", json!({"text": "x"}));
+    }
+    let typing = t.elapsed();
+    let t = std::time::Instant::now();
+    srv.settle(&mut p);
+    let sync = t.elapsed();
+    assert_same(&p);
+    eprintln!("200 keystrokes: {typing:?} ({:?} each); sending and receiving: {sync:?}", typing / 200);
+    assert!(typing.as_millis() < 4000, "typing took {typing:?}");
 }
