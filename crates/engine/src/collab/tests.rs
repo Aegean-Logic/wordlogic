@@ -561,3 +561,50 @@ fn first_diff(a: &Value, b: &Value) -> String {
     let cut = |s: &str| s.get(from..(at + 200).min(s.len())).unwrap_or("").to_string();
     format!("at {at}:\n{}\nvs\n{}", cut(&a), cut(&b))
 }
+
+#[test]
+fn the_others_positions_move_with_the_text() {
+    let mut srv = Server::new();
+    let mut p = people(&doc(&["Hello world"]), 2);
+    let caret = |off| Other { client: 2, anchor: Pos::body(0, off), focus: Pos::body(0, off) };
+    // Person 2's caret is before "world", as they reported it.
+    at(&mut p[1], 0, 6);
+    p[0].collab_set_others(vec![caret(6)]);
+    // Typing before it moves it along.
+    at(&mut p[0], 0, 0);
+    run(&mut p[0], "text.insert", json!({"text": "Big "}));
+    assert_eq!(p[0].collab_others()[0].focus, Pos::body(0, 10));
+    // Typing right at it leaves it in front of what this person typed.
+    at(&mut p[0], 0, 10);
+    run(&mut p[0], "text.insert", json!({"text": "Z"}));
+    assert_eq!(p[0].collab_others()[0].focus, Pos::body(0, 10));
+    // What person 2 types at their caret goes before it.
+    srv.settle(&mut p);
+    assert_eq!(p[1].sel.focus, Pos::body(0, 10), "their own caret stayed there too");
+    run(&mut p[1], "text.insert", json!({"text": "X"}));
+    srv.settle(&mut p);
+    assert_same(&p);
+    assert_eq!(text(&p[0]), "Big Hello XZworld");
+    assert_eq!(p[0].collab_others()[0].focus, Pos::body(0, 11));
+    // Undo moves it back with the text.
+    // (Typing in two places may be one step or two.)
+    run(&mut p[0], "edit.undo", json!({}));
+    if text(&p[0]) != "Hello Xworld" {
+        run(&mut p[0], "edit.undo", json!({}));
+    }
+    srv.settle(&mut p);
+    assert_same(&p);
+    assert_eq!(text(&p[0]), "Hello Xworld");
+    assert_eq!(p[0].collab_others()[0].focus, Pos::body(0, 7));
+    // Positions past the end are put inside the document; one in a story this copy doesn't have
+    // stays as it is.
+    let nowhere = Pos { story: StoryRef::Part(999), path: Path::top(0), off: 3 };
+    p[0].collab_set_others(vec![caret(500), Other { client: 3, anchor: nowhere.clone(), focus: nowhere.clone() }]);
+    assert_eq!(p[0].collab_others()[0].focus, Pos::body(0, 12));
+    assert_eq!(p[0].collab_others()[1].focus, nowhere);
+    at(&mut p[0], 0, 0);
+    run(&mut p[0], "text.insert", json!({"text": "A"}));
+    assert_eq!(p[0].collab_others()[1].focus, nowhere);
+    p[0].collab_stop();
+    assert!(p[0].collab_others().is_empty());
+}

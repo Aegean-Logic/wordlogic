@@ -9,11 +9,14 @@
 //! URL flags: `?webgl` forces WebGL2; `?sample` opens the sample document; `?host=parent` (inside
 //! an `<iframe>`) talks to a same-origin parent page instead: it sends the document to open and
 //! stores what WordCraft saves (`host`), `&author=` names the user for comments and tracked
-//! changes, and `&ack=1` has the parent confirm each save (`acks`).
+//! changes, and `&ack=1` has the parent confirm each save (`acks`). The page can run a
+//! co-editing session (`collab_msg`).
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 #[cfg(any(target_arch = "wasm32", test))]
 mod acks;
+#[cfg(any(target_arch = "wasm32", test))]
+mod collab_msg;
 #[cfg(target_arch = "wasm32")]
 mod host;
 #[cfg(target_arch = "wasm32")]

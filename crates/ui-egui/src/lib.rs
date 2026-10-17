@@ -66,6 +66,7 @@ pub mod objects;
 pub mod options;
 pub mod panes;
 pub mod paste_picture;
+pub mod presence;
 pub mod previews;
 pub mod print_page;
 pub mod printing;
@@ -90,6 +91,17 @@ use wordcraft_engine::Session;
 
 pub use control::ControlRequest;
 pub use file_dialogs::{FileDialogAnswer, FileDialogRequest, open_filters};
+
+/// Someone else in a shared document (co-editing): their name and colour. Where they are is the
+/// session's ([`Session::collab_others`], in the same order), which keeps their caret and
+/// selection in place as the text changes; the page draws them there.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Presence {
+    /// Their client id in the session.
+    pub client: u64,
+    pub name: String,
+    pub color: egui::Color32,
+}
 
 /// Platform services injected by the host (file dialogs, file I/O).
 #[derive(Default)]
@@ -429,6 +441,9 @@ pub struct WordApp {
     pub dialog: Option<dialogs::Dialog>,
     /// The Colors dialog (More Colors…), shown above any other dialog (#606).
     pub colors: Option<colors::ColorsDialog>,
+    /// The others in a shared document (set by the host with [`WordApp::set_presence`]): drawn
+    /// in the document and in the title bar.
+    pub presence: Vec<Presence>,
     /// The Restrict Editing pane (#412).
     pub restrict: dialogs_review::RestrictPane,
     pub status_msg: Option<(String, f64)>,
@@ -580,6 +595,7 @@ impl WordApp {
             controls: Default::default(),
             dialog: None,
             colors: None,
+            presence: Vec::new(),
             restrict: Default::default(),
             status_msg: None,
             previews: previews::Previews::default(),
@@ -1713,6 +1729,18 @@ impl WordApp {
 
     /// Document title for the title bar (and the suggested file name). An untitled document is
     /// named in the interface language, as `Document1` is in English.
+    /// The others in a shared document and where they are (each with their caret and selection
+    /// as they last reported them); the session moves their positions with the text from here on.
+    pub fn set_presence(&mut self, people: Vec<(Presence, wordcraft_doc::Pos, wordcraft_doc::Pos)>) {
+        let others = people
+            .iter()
+            .map(|(p, anchor, focus)| wordcraft_engine::collab::Other { client: p.client, anchor: anchor.clone(), focus: focus.clone() })
+            .collect();
+        self.session.collab_set_others(others);
+        let kept = self.session.collab_others().len();
+        self.presence = people.into_iter().map(|(p, ..)| p).take(kept).collect();
+    }
+
     pub fn title_stem(&self) -> String {
         match &self.session.path {
             Some(p) => p.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_else(|| tl!("Document1").into()),

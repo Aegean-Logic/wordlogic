@@ -24,6 +24,32 @@
 //! A document saved through the page takes the name it was stored under (the page's `name` in
 //! `wordcraft:saved` when it gave one), so the next Save goes to the same file.
 //!
+//! Co-editing (the page runs the session with the server; [`collab_msg`] checks what it sends):
+//!
+//! - `wordcraft:ready` says `{ collab: true }`: this build can co-edit.
+//! - `wordcraft:collab:start` (from the parent): `{ client (or clientId), seq, readOnly?, user?,
+//!   color?, state? }`, after `wordcraft:open`: the document just opened is the shared one as of
+//!   log position `seq`. With `state` (a checkpoint's snapshot, `Session::collab_load_snapshot`)
+//!   the snapshot is, and replaces the file just opened. `readOnly`: this person can follow but
+//!   not edit.
+//! - `wordcraft:collab:entries` (from the parent): `{ json }`, the server's log entries in order
+//!   (JSON text of `collab::Incoming`s).
+//! - `wordcraft:collab:op` (to the parent): `{ json }`, this person's next op for the server
+//!   (`collab::Outgoing`). The next comes once this one is back in the log.
+//! - `wordcraft:collab:checkpoint` (from the parent): `{ id }`; answered with
+//!   `wordcraft:collab:checkpointData { id, seq, name, bytes, state }`: the shared document
+//!   (without this person's unconfirmed edits) in the opened file's format, its log position, and
+//!   its state snapshot (text) for people who join from that save.
+//! - `wordcraft:collab:selection` (to the parent): `{ json }`, this person's position
+//!   (`{anchor, focus}`, `Session::collab_presence`) whenever it changes;
+//!   `wordcraft:collab:presence` (from the parent): `{ json }`, the others'
+//!   (`[{anchor, focus, client, name, color}]`), drawn in the document.
+//! - `wordcraft:collab:stop` (from the parent) ends sharing; `wordcraft:collab:error` (to the
+//!   parent) `{ error }` says this copy can't follow the log and must rejoin.
+//!
+//! Co-editing messages are handled as they arrive, not at the next frame, so a hidden tab (which
+//! draws none) keeps up with the others and answers checkpoint requests ([`Bridge::attach`]).
+//!
 //! Only the parent window on the page's own origin is heard or answered. In host mode the page
 //! starts on a blank document instead of the Start screen or a sample, and the parent guards
 //! leaving the page.
@@ -32,15 +58,17 @@
 //! [`Bridge::handle`].
 
 use std::cell::{Cell, RefCell};
-use std::rc::Rc;
+use std::collections::VecDeque;
+use std::rc::{Rc, Weak};
 
 use wasm_bindgen::JsCast as _;
 use wasm_bindgen::JsValue;
 use wasm_bindgen::closure::Closure;
 use wordcraft_ui_egui::async_saves::AsyncSaves;
-use wordcraft_ui_egui::{Inbox, Services, WordApp};
+use wordcraft_ui_egui::{Inbox, Presence, Services, WordApp};
 
 use crate::acks::{self, Reply, SaveAcks};
+use crate::collab_msg::{self, Fields};
 
 /// The longest user name taken from `?author=` (the engine caps it again).
 const MAX_AUTHOR_CHARS: usize = 200;
@@ -54,6 +82,12 @@ const MAX_OPEN_BYTES: u32 = 200 << 20;
 const MAX_TYPE_UNITS: u32 = 64;
 const MAX_NAME_UNITS: u32 = 4096;
 const MAX_ERROR_UNITS: u32 = 64 * 1024;
+/// Log batches, state snapshots and presence lists (JSON text).
+const MAX_JSON_UNITS: u32 = collab_msg::MAX_JSON_BYTES as u32;
+/// A person's name and colour.
+const MAX_SHORT_UNITS: u32 = 1024;
+/// The most co-editing messages held for the app; past this the page has to rejoin.
+const MAX_COLLAB_QUEUE: usize = 4096;
 
 /// A message from the page, checked.
 enum FromPage {
@@ -61,6 +95,8 @@ enum FromPage {
     Open { name: String, bytes: Vec<u8> },
     /// `wordcraft:saved` / `wordcraft:saveFailed` (`&ack=1` only).
     Reply(Reply),
+    /// `wordcraft:collab:*`.
+    Collab(collab_msg::FromPage),
 }
 
 #[derive(Clone)]
@@ -78,6 +114,15 @@ pub struct Bridge {
     acks: Option<Rc<RefCell<SaveAcks>>>,
     /// The parent's answers since the last frame.
     replies: Rc<RefCell<Vec<Reply>>>,
+    /// Co-editing messages from the parent not handled yet, in order.
+    collab: Rc<RefCell<VecDeque<collab_msg::FromPage>>>,
+    /// This person's position as last told to the parent (JSON).
+    position: Rc<RefCell<String>>,
+    /// The app, for handling co-editing messages as they arrive ([`Bridge::attach`]), and the
+    /// files the page sent that it hasn't opened yet.
+    app: Rc<RefCell<Option<(Weak<RefCell<WordApp>>, Inbox)>>>,
+    /// Asks for another frame when co-editing changes what's shown.
+    ctx: Rc<RefCell<Option<egui::Context>>>,
 }
 
 impl Bridge {
@@ -99,15 +144,38 @@ impl Bridge {
             reported: Rc::default(),
             acks: ack.then(Rc::default),
             replies: Rc::default(),
+            collab: Rc::default(),
+            position: Rc::default(),
+            app: Rc::default(),
+            ctx: Rc::default(),
         })
     }
 
     /// Send saved and exported files to the parent instead of downloading them, and hear files
     /// from it.
     pub fn connect(&self, services: &mut Services, inbox: Inbox, ctx: egui::Context) {
+        *self.ctx.borrow_mut() = Some(ctx.clone());
         self.listen(inbox, ctx);
         let bridge = self.clone();
         services.download = Some(Box::new(move |name: &str, bytes: &[u8]| bridge.post_save(name, bytes)));
+    }
+
+    /// Handle co-editing messages as they arrive rather than at the next frame, so a hidden tab
+    /// (which draws none) keeps up with the others and answers checkpoint requests.
+    pub fn attach(&self, app: &Rc<RefCell<WordApp>>, inbox: Inbox) {
+        *self.app.borrow_mut() = Some((Rc::downgrade(app), inbox));
+    }
+
+    /// Co-editing messages now, if the app is free and has opened every file the page sent (a
+    /// session starts on the file that came just before it).
+    fn sync_collab_now(&self) {
+        let Some((app, inbox)) = self.app.borrow().clone() else { return };
+        let opened = inbox.lock().map(|q| q.is_empty()).unwrap_or(false);
+        if let (true, Some(app)) = (opened, app.upgrade())
+            && let Ok(mut app) = app.try_borrow_mut()
+        {
+            self.sync_collab(&mut app);
+        }
     }
 
     /// `?author=`: the host's name for the user signs new comments and tracked changes.
@@ -121,7 +189,12 @@ impl Bridge {
     }
 
     pub fn post_ready(&self) {
-        self.send(&[("type", "wordcraft:ready".into()), ("version", env!("CARGO_PKG_VERSION").into()), ("ack", self.acks.is_some().into())]);
+        self.send(&[
+            ("type", "wordcraft:ready".into()),
+            ("version", env!("CARGO_PKG_VERSION").into()),
+            ("ack", self.acks.is_some().into()),
+            ("collab", true.into()),
+        ]);
     }
 
     pub fn post_failed(&self, error: &str) {
@@ -163,6 +236,7 @@ impl Bridge {
                 take_name(app, name);
             }
         }
+        self.sync_collab(app);
         if settling {
             return;
         }
@@ -170,6 +244,126 @@ impl Bridge {
         if self.reported.get() != Some(dirty) && self.send(&[("type", "wordcraft:dirty".into()), ("dirty", dirty.into())]) {
             self.reported.set(Some(dirty));
         }
+    }
+
+    /// Co-editing: the page's messages in order, then this person's position and next op.
+    fn sync_collab(&self, app: &mut WordApp) {
+        let queued: Vec<collab_msg::FromPage> = self.collab.borrow_mut().drain(..).collect();
+        let mut changed = false;
+        for msg in queued {
+            match msg {
+                collab_msg::FromPage::Start { client, seq, read_only, user, color: _, state } => {
+                    // A checkpoint's snapshot is the shared document exactly; the file read back
+                    // wouldn't number its parts, comments and lists the same way.
+                    let loaded = match &state {
+                        Some(snapshot) => app.session.collab_load_snapshot(snapshot),
+                        None => Ok(()),
+                    };
+                    match loaded.and_then(|()| app.session.collab_start(client, seq)) {
+                        Ok(()) => {
+                            app.session.collab_set_read_only(read_only);
+                            self.position.borrow_mut().clear();
+                            log::info!("co-editing as client {client} ({}) from log position {seq}", user.as_deref().unwrap_or("?"));
+                        }
+                        Err(e) => self.post_collab_error(&e.to_string()),
+                    }
+                    changed = true;
+                }
+                collab_msg::FromPage::Entries(entries) => {
+                    for entry in entries {
+                        if let Err(e) = app.session.collab_receive(entry) {
+                            app.session.collab_stop();
+                            app.presence.clear();
+                            self.post_collab_error(&e.to_string());
+                            break;
+                        }
+                        changed = true;
+                    }
+                }
+                collab_msg::FromPage::Checkpoint { id } => self.post_checkpoint(app, id),
+                collab_msg::FromPage::Stop => {
+                    app.session.collab_stop();
+                    app.presence.clear();
+                    changed = true;
+                }
+                collab_msg::FromPage::Presence(people) => {
+                    let people = people
+                        .into_iter()
+                        .map(|s| {
+                            let [r, g, b] = s.color;
+                            (Presence { client: s.client, name: s.name, color: egui::Color32::from_rgb(r, g, b) }, s.anchor, s.focus)
+                        })
+                        .collect();
+                    app.set_presence(people);
+                    changed = true;
+                }
+            }
+        }
+        self.post_position(app);
+        if let Some(out) = app.session.collab_outgoing() {
+            match serde_json::to_string(&out) {
+                Ok(json) => {
+                    self.send(&[("type", "wordcraft:collab:op".into()), ("json", json.into())]);
+                }
+                Err(e) => self.post_collab_error(&e.to_string()),
+            }
+        }
+        if changed && let Some(ctx) = self.ctx.borrow().as_ref() {
+            ctx.request_repaint();
+        }
+    }
+
+    /// Tells the parent where this person is (caret and selection) when it has changed.
+    fn post_position(&self, app: &WordApp) {
+        if !app.session.collab_active() {
+            return;
+        }
+        let json = app.session.collab_presence().to_string();
+        if *self.position.borrow() != json && self.send(&[("type", "wordcraft:collab:selection".into()), ("json", json.as_str().into())]) {
+            *self.position.borrow_mut() = json;
+        }
+    }
+
+    /// The shared document as everyone has it, for the page to save as the session's checkpoint:
+    /// in the opened file's format, with its state snapshot.
+    fn post_checkpoint(&self, app: &mut WordApp, id: u64) {
+        let name = checkpoint_name(app);
+        let data = app.session.collab_snapshot().and_then(|snapshot| {
+            let (_, doc) = app.session.collab_confirmed()?;
+            Some(snapshot.map_err(|e| e.to_string()).and_then(|(seq, state)| Ok((seq, state, wordcraft_engine::io::save_bytes(&name, doc)?))))
+        });
+        let (seq, state, bytes) = match data {
+            Some(Ok(data)) => data,
+            Some(Err(e)) => {
+                // Not a reason to rejoin: the page's save fails and is tried again later.
+                log::error!("co-editing: couldn't write the shared document as {name}: {e}");
+                app.status(format!("Couldn't save the shared document: {e}"));
+                return;
+            }
+            None => {
+                self.post_collab_error("no shared document to save");
+                return;
+            }
+        };
+        let buffer = js_sys::Uint8Array::from(bytes.as_slice()).buffer();
+        let fields = [
+            ("type", "wordcraft:collab:checkpointData".into()),
+            ("id", JsValue::from_f64(id as f64)),
+            ("seq", JsValue::from_f64(seq as f64)),
+            ("name", name.as_str().into()),
+            ("state", state.as_str().into()),
+            ("bytes", buffer.clone().into()),
+        ];
+        if let Some(m) = message(&fields)
+            && self.parent.post_message_with_transfer(&m, &self.origin, &js_sys::Array::of1(&buffer)).is_err()
+        {
+            log::error!("couldn't hand the checkpoint to the page");
+        }
+    }
+
+    fn post_collab_error(&self, error: &str) {
+        log::error!("co-editing: {error}");
+        self.send(&[("type", "wordcraft:collab:error".into()), ("error", error.into())]);
     }
 
     /// The app's `download`: hand the file to the parent. An error means it didn't get there (the
@@ -249,6 +443,31 @@ impl Bridge {
                 Reply::parse(&kind, number(data, "id"), string(data, "name", MAX_NAME_UNITS), string(data, "error", MAX_ERROR_UNITS))
                     .map(FromPage::Reply)
             }
+            _ if kind.starts_with("wordcraft:collab:") => {
+                let flag = |key: &str| js_sys::Reflect::get(data, &JsValue::from_str(key)).ok().and_then(|v| v.as_bool());
+                let fields = Fields {
+                    client: number(data, "client"),
+                    client_id: number(data, "clientId"),
+                    seq: number(data, "seq"),
+                    id: number(data, "id"),
+                    read_only: flag("readOnly"),
+                    json: string(data, "json", MAX_JSON_UNITS),
+                    user: string(data, "user", MAX_SHORT_UNITS),
+                    color: string(data, "color", MAX_SHORT_UNITS),
+                    state: string(data, "state", MAX_JSON_UNITS),
+                };
+                if present(data, "state") && fields.state.is_none() {
+                    self.post_collab_error(&format!("{kind}: `state` must be text of at most {MAX_JSON_UNITS} characters"));
+                    return None;
+                }
+                match collab_msg::parse(&kind, fields)? {
+                    Ok(msg) => Some(FromPage::Collab(msg)),
+                    Err(e) => {
+                        self.post_collab_error(&e);
+                        None
+                    }
+                }
+            }
             _ => None,
         }
     }
@@ -269,6 +488,20 @@ impl Bridge {
                     replies.push(reply);
                 }
             }
+            FromPage::Collab(msg) => {
+                let full = {
+                    let mut queue = self.collab.borrow_mut();
+                    let full = queue.len() >= MAX_COLLAB_QUEUE;
+                    if !full {
+                        queue.push_back(msg);
+                    }
+                    full
+                };
+                if full {
+                    self.post_collab_error("too many messages waiting; rejoin");
+                }
+                self.sync_collab_now();
+            }
         }
     }
 
@@ -276,6 +509,18 @@ impl Bridge {
     fn send(&self, fields: &[(&str, JsValue)]) -> bool {
         message(fields).is_some_and(|m| self.parent.post_message(&m, &self.origin).is_ok())
     }
+}
+
+/// The name of the file the shared document is saved to (the one the page opened), which also
+/// gives the format.
+fn checkpoint_name(app: &WordApp) -> String {
+    app.session
+        .path
+        .as_ref()
+        .and_then(|p| p.to_str())
+        .and_then(acks::clean_name)
+        .or_else(|| app.session.file_name.as_deref().and_then(acks::clean_name))
+        .unwrap_or_else(|| acks::DEFAULT_NAME.to_string())
 }
 
 /// The document is now the file `name` in the page's storage: Save goes there next.

@@ -16,6 +16,33 @@ pub(crate) struct Shared {
     pub(crate) read_only: bool,
     /// [`Session::document_id`] of the shared document: opening another one ends sharing.
     pub(crate) document_id: u64,
+    /// Where the others are, kept in place through every edit until they report again.
+    pub(crate) others: Vec<Other>,
+}
+
+/// Someone else's caret and selection in the shared document, for drawing.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Other {
+    /// Their client id: text they type at their caret goes before it, anyone else's after it.
+    pub client: u64,
+    pub anchor: Pos,
+    pub focus: Pos,
+}
+
+/// The most people whose positions are kept.
+const MAX_OTHERS: usize = 64;
+
+/// Moves the others' positions through `op` (by `author`), which turned `old` into `new`.
+fn move_others(others: &mut [Other], old: &Document, new: &Document, op: &Op, author: u64) {
+    for o in others {
+        let stay = o.client != author;
+        for p in [&mut o.anchor, &mut o.focus] {
+            // A position in a story this copy doesn't have (yet) stays as it is, undrawn.
+            if let Some(f) = flat_pos(old, p) {
+                *p = pos_at(new, &map_flat(op, &f, stay));
+            }
+        }
+    }
 }
 
 const READ_ONLY: &str = "You can view this document but not edit it.";
@@ -57,7 +84,8 @@ impl Session {
     /// this person's id from the server.
     pub fn collab_start(&mut self, client: u64, seq: u64) -> Result<(), CmdError> {
         let replica = Replica::new(client, self.doc.clone(), seq)?;
-        self.collab = Some(Box::new(Shared { replica, shown: self.doc.clone(), read_only: false, document_id: self.document_id() }));
+        self.collab =
+            Some(Box::new(Shared { replica, shown: self.doc.clone(), read_only: false, document_id: self.document_id(), others: Vec::new() }));
         Ok(())
     }
 
@@ -133,6 +161,8 @@ impl Session {
         let Some(mut c) = self.collab.take() else { return };
         if let Some(fix) = c.replica.drop_inflight(&mut self.doc) {
             self.follow(&c.shown, &fix);
+            let me = c.replica.client();
+            move_others(&mut c.others, &c.shown, &self.doc, &fix, me);
         }
         c.shown = self.doc.clone();
         self.collab = Some(c);
@@ -143,9 +173,11 @@ impl Session {
     pub fn collab_receive(&mut self, msg: Incoming) -> Result<(), CmdError> {
         self.collab_flush();
         let Some(mut c) = self.collab.take() else { return Err(CmdError::Failed("co-editing: no shared document".into())) };
+        let author = msg.client;
         let r = c.replica.receive(msg, &mut self.doc);
         if let Ok(Shown::Applied(op) | Shown::Rebuilt(op)) = &r {
             self.follow(&c.shown, op);
+            move_others(&mut c.others, &c.shown, &self.doc, op, author);
         }
         c.shown = self.doc.clone();
         self.collab = Some(c);
@@ -155,6 +187,24 @@ impl Session {
     /// Where this person's selection is, for showing it to the others.
     pub fn collab_presence(&self) -> Value {
         json!({"anchor": self.sel.anchor, "focus": self.sel.focus})
+    }
+
+    /// Where the others are, as they last reported ([`Session::collab_presence`] of theirs). From
+    /// then on their positions move with every edit, as this person's caret does, until they
+    /// report again. Positions are put inside the document; one in a story this copy doesn't have
+    /// stays as it is (and isn't drawn).
+    pub fn collab_set_others(&mut self, others: Vec<Other>) {
+        let doc = &self.doc;
+        if let Some(c) = self.collab.as_mut() {
+            let place = |p: Pos| if doc.story(p.story).is_some() { doc.clamp(&p) } else { p };
+            c.others =
+                others.into_iter().take(MAX_OTHERS).map(|o| Other { client: o.client, anchor: place(o.anchor), focus: place(o.focus) }).collect();
+        }
+    }
+
+    /// Where the others are now ([`Session::collab_set_others`]).
+    pub fn collab_others(&self) -> &[Other] {
+        self.collab.as_ref().map_or(&[], |c| &c.others)
     }
 
     /// Keeps the selection where it was through someone else's `op` (just applied).
@@ -218,9 +268,14 @@ impl Session {
                         serde_json::to_string(&left).unwrap_or_default()
                     );
                 }
+                let me = c.replica.client();
+                let kept = c.others.clone();
+                move_others(&mut c.others, &c.shown, &self.doc, &op, me);
                 let r = c.replica.local(&c.shown, op, label, join);
                 if r.is_ok() {
                     c.shown = self.doc.clone();
+                } else {
+                    c.others = kept;
                 }
                 r
             }
@@ -247,9 +302,12 @@ impl Session {
         let mut done = 0;
         let mut last: Option<Op> = None;
         let mut err = None;
+        let me = c.replica.client();
         while done < count {
+            let before = self.doc.clone();
             match c.replica.undo(&mut self.doc, redo) {
                 Ok(Some(op)) => {
+                    move_others(&mut c.others, &before, &self.doc, &op, me);
                     done += 1;
                     last = Some(op);
                 }

@@ -1262,6 +1262,8 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                 }
             }
         }
+        // Co-editing: the others' selections, under this person's own.
+        crate::presence::paint_selections(app, &painter, &layout, &rects, geo.scale);
         // Selection (a selected object shows its frame instead): whole table cells shade the
         // cells (an empty one too), a column selection each row's piece, text running into or
         // across a table the whole cells of the rows it takes.
@@ -1409,6 +1411,8 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                 painter.line_segment([pos2(g.min.x, g.max.y), pos2(g.max.x, g.max.y)], Stroke::new(1.0, caret_color));
             }
         }
+        // Co-editing: the others' carets with their names, over the text.
+        crate::presence::paint_carets(app, &painter, &layout, &rects, geo.scale);
         crate::objects::paint(app, &painter, &t, &layout, &rects, geo.scale);
         crate::ink::paint(app, &painter, &rects, &layout, geo.scale);
         crate::table_pen::paint(app, &painter, &t, &layout, &rects, geo.scale);

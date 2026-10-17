@@ -293,6 +293,31 @@ pub fn title_bar(app: &mut WordApp, ui: &mut Ui) {
                         let _ = app.run("ui.backstage", json!({"value": true, "page": "options", "pane": "general"}));
                     }
                     ui.add_space(8.0);
+                    // Who else is editing (co-editing), as Word shows co-authors: their initials in
+                    // their colour, their name on hover. Not in a narrow window (the browser page
+                    // lists who's editing above the editor).
+                    let shown = if ui.available_width() > 760.0 { 5 } else { 0 };
+                    for p in app.presence.iter().take(shown) {
+                        let (r, resp) = ui.allocate_exact_size(vec2(control_h, control_h), Sense::hover());
+                        ui.painter().circle_filled(r.center(), control_h / 2.0 - 1.0, p.color);
+                        ui.painter().circle_stroke(r.center(), control_h / 2.0 - 1.0, Stroke::new(1.5, t.title_bar));
+                        ui.painter().text(
+                            r.center(),
+                            Align2::CENTER_CENTER,
+                            crate::presence::initials(&p.name),
+                            semibold(10.5),
+                            egui::Color32::WHITE,
+                        );
+                        let label = format!("{} {}", p.name, tl!("is editing"));
+                        resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, &label));
+                        resp.on_hover_text(label);
+                    }
+                    if shown > 0 && app.presence.len() > shown {
+                        ui.label(egui::RichText::new(format!("+{}", app.presence.len() - shown)).font(regular(11.5)).color(t.text_dim));
+                    }
+                    if shown > 0 && !app.presence.is_empty() {
+                        ui.add_space(8.0);
+                    }
                     if app.ui.show_discord {
                         let (r, resp) = ui.allocate_exact_size(vec2(108.0, 22.0), Sense::click());
                         ui.painter().rect_filled(r, 11.0, if resp.hovered() { t.accent_text } else { t.accent });

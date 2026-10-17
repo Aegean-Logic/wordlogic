@@ -19,6 +19,7 @@ mod story;
 pub use delta::{Comp, Delta, Item, compose, transform};
 pub use fields::Fields;
 pub use replica::{Incoming, Outgoing, Replica, Shown};
+pub use shared::Other;
 pub(crate) use shared::{Shared, run_shared};
 
 use std::collections::BTreeMap;

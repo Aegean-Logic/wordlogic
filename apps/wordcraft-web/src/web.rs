@@ -90,6 +90,10 @@ pub fn start() {
                     } else if !sample {
                         app.start_screen();
                     }
+                    let app = Rc::new(RefCell::new(app));
+                    if let Some(bridge) = &app_bridge {
+                        bridge.attach(&app, inbox.clone());
+                    }
                     Ok(Box::new(WebShell { app, inbox, messages, bridge: app_bridge }))
                 }),
             )
@@ -117,7 +121,9 @@ fn query_param(key: &str) -> Option<String> {
 /// Wraps the app to read dropped files asynchronously (browsers can't read them synchronously)
 /// and feed them through the inbox.
 struct WebShell {
-    app: WordApp,
+    /// Shared with the host bridge, which handles co-editing messages as they arrive: a hidden
+    /// tab draws no frames, but the others' edits and checkpoint requests still need handling.
+    app: Rc<RefCell<WordApp>>,
     inbox: Inbox,
     messages: Rc<RefCell<Vec<String>>>,
     /// `?host=parent`: the page WordCraft is framed in.
@@ -142,20 +148,22 @@ impl eframe::App for WebShell {
             });
         }
         let msgs = std::mem::take(&mut *self.messages.borrow_mut());
+        let mut app = self.app.borrow_mut();
         for msg in msgs {
-            self.app.status(msg);
+            app.status(msg);
         }
-        self.app.logic(ctx);
+        app.logic(ctx);
     }
 
     fn raw_input_hook(&mut self, _ctx: &egui::Context, raw: &mut egui::RawInput) {
-        self.app.raw_input_hook(raw);
+        self.app.borrow_mut().raw_input_hook(raw);
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        self.app.ui(ui);
+        let mut app = self.app.borrow_mut();
+        app.ui(ui);
         if let Some(bridge) = &self.bridge {
-            bridge.sync(&mut self.app, ui.ctx());
+            bridge.sync(&mut app, ui.ctx());
         }
     }
 }

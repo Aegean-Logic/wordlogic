@@ -86,7 +86,7 @@ Messages are plain objects passed with `postMessage`, each with a `type`:
 
 | Message | Direction | Fields |
 |---|---|---|
-| `wordcraft:ready` | to the page | `version`; `ack` (true with `&ack=1`). Send the file to open after this. |
+| `wordcraft:ready` | to the page | `version`; `ack` (true with `&ack=1`); `collab` (true: this build can co-edit). Send the file to open after this. |
 | `wordcraft:open` | from the page | `name`, `bytes` (`ArrayBuffer` or `Uint8Array`, up to 200 MB) |
 | `wordcraft:save` | to the page | `name`, `bytes` (a transferred `ArrayBuffer`); `id` with `&ack=1`. Sent for Save, Save As, and Export as PDF or picture. |
 | `wordcraft:saved` | from the page (`&ack=1`) | `id`; optional `name` when the page stored the file under another name |
@@ -117,6 +117,36 @@ the user the page's `error`. Edits made after the handover stay unsaved either w
 confirms a newer save of the same document, older saves still waiting count as stored too. A page
 that leaves more than 64 saves unanswered has the oldest counted as failed. A WordLogic that
 doesn't know the flag answers `wordcraft:ready` without `ack: true`.
+
+### Co-editing
+
+Several people can edit one document at once (`docs/co-editing.md`). WordLogic does all the
+merging; the page connects it to a server that orders everyone's edits into one numbered log
+(for Nextcloud, the `wordcraft-nextcloud` app's `/apps/wordcraft/collab/*` endpoints).
+
+| Message | Direction | Fields |
+|---|---|---|
+| `wordcraft:collab:start` | from the page | `client` (also accepted as `clientId`: this person's id from the server, 1 to 2⁵³−1), `seq`, optional `readOnly` (this person can view but not edit: edits are taken back with a message), `user` and `color` (`#rrggbb`: how the others see this person), and optional `state`: the state snapshot kept with the checkpoint at `seq` (text, from `checkpointData`). Send right after `wordcraft:open`: the document just opened is the shared one as of log position `seq`, or, with `state`, the snapshot is, and replaces the file just opened. |
+| `wordcraft:collab:entries` | from the page | `json`: the server's log entries in order, as JSON text: `[{seq, client, client_seq, base, op}]`, `op` exactly as the server received it. An entry whose op doesn't parse becomes a no-op in its place. |
+| `wordcraft:collab:op` | to the page | `json`: this person's next edit for the server, `{client, client_seq, base, op}`. The next comes once this one is back in the log, so send them in order and retry a failed one (the server must recognise a repeated `client`/`client_seq`). |
+| `wordcraft:collab:checkpoint` | from the page | `id`: asks for the shared document to save to the file. |
+| `wordcraft:collab:checkpointData` | to the page | `id`, `seq`, `name`, `bytes` (the document in the opened file's format: .docx, .odt, .rtf…), `state` (text): the document as everyone has it at log position `seq`, without this person's unconfirmed edits, and its exact state snapshot. A saved file doesn't read back with the same part, comment and list numbers, which everyone's edits refer to, so the server keeps `state` with the checkpoint and hands it to people who join from that file (`collab:start`'s `state`). It can be tens of MB: pictures travel inside it. |
+| `wordcraft:collab:selection` | to the page | `json`: this person's position, `{anchor, focus}` (each a position: `{story, path, off}`), whenever it changes. The page passes it on as it is. |
+| `wordcraft:collab:presence` | from the page | `json`: where the others are, `[{anchor, focus, client, name, color: "#rrggbb"}]` (their `selection` as their WordLogic sent it, with their client id, name and colour). Each person's caret is drawn in their colour with a tag carrying their name, and their selection as a highlight in their colour; between reports their positions move with the text. |
+| `wordcraft:collab:stop` | from the page | Ends sharing. |
+| `wordcraft:collab:error` | to the page | `error`: this copy can't follow the log (an entry missing or out of order, a snapshot that doesn't read). Rejoin: load the file again and start over. |
+
+The server's side of the contract:
+- Positions are gap-free, from 1.
+- Joining returns the position the current file was saved at (with the snapshot kept for it, if
+  any), plus every entry after it.
+- A joiner that loaded the file before a newer save has to load it again.
+- Entries older than the oldest `base` anyone may still send must be kept.
+
+While sharing, Undo and Redo work on this person's own edits only, and never take back a later
+change of someone else's. While sharing, a Save of the opened file (`wordcraft:save` under its
+name) is the page's to turn into a checkpoint. WordLogic handles co-editing messages as they
+arrive, even in a hidden tab, which draws no frames.
 
 ## Renderer selection and fallback flags
 

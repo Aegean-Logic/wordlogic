@@ -1,6 +1,6 @@
 # Real-time co-editing: design
 
-Status: engine done (phase 1), 2026-10-17. Fork-specific (WordLogic, Aegean Logic). Not upstream
+Status: engine (phase 1), browser transport (phase 2) and presence (phase 3) done, 2026-10-17. Fork-specific (WordLogic, Aegean Logic). Not upstream
 behaviour. Sibling of GridLogic's `docs/co-editing.md`: same server, same log protocol, a
 different merge for text.
 
@@ -107,7 +107,10 @@ snapshot (`Session::collab_load_snapshot`) and follows the log from its position
 `collab_start(client, seq)`, `collab_load_snapshot`, `collab_outgoing` → `Outgoing`,
 `collab_receive(Incoming)`, `collab_refused` (the server refused the op in flight for good),
 `collab_snapshot` / `collab_confirmed` (checkpoints), `collab_set_read_only` (edits are taken back
-with a message), `collab_presence`, `collab_stop`. An op over 8 MB (`MAX_SHARED_OP_BYTES`) is taken
+with a message), `collab_presence` (this person's `{anchor, focus}` for the others),
+`collab_set_others` / `collab_others` (the others' positions, which then move with every edit,
+local or remote, as this person's caret does: text typed at someone's caret goes after it unless
+they typed it), `collab_stop`. An op over 8 MB (`MAX_SHARED_OP_BYTES`) is taken
 back with a message. Opening another document in the same window ends sharing.
 
 ## 7. Accepted limits
@@ -123,7 +126,7 @@ back with a message. Opening another document in the same window ends sharing.
 
 | Phase | Scope |
 |---|---|
-| 2. Transport | Bridge messages in `apps/wordcraft-web` (`wordcraft:collab*`, as in `../wordcraft-nextcloud` README § Protocol); checkpoint writer with snapshot |
-| 3. Presence | Others' carets and selections with names and colours; who's editing |
+| 2. Transport (done) | The web bridge (`apps/wordcraft-web/src/host.rs`, checked by `collab_msg.rs`): `wordcraft:collab:*` as in `packaging/web/README.md` § Co-editing and `../wordcraft-nextcloud` README § Protocol. Joining from a checkpoint's snapshot (`collab:start`'s `state`); checkpoints in the opened file's format with their snapshot; hidden tabs keep up (messages handled as they arrive) |
+| 3. Presence (done) | Others' carets (a bar in their colour with a name tag) and selections (a highlight in their colour) in the document (`crates/ui-egui/src/presence.rs`), kept with the text between reports; their initials in the title bar |
 | 4. Sharing and desktop | Share dialog through Nextcloud; Nextcloud in the desktop app's File view; Open in Desktop App (`wordlogic://`) |
 | 5. Hardening | Cell-by-cell table merging; large-op caps tuned; performance on very long documents |
