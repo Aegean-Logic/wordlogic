@@ -620,3 +620,26 @@ fn first_diff(a: &Value, b: &Value) -> String {
     let cut = |s: &str| s.get(from..(at + 200).min(s.len())).unwrap_or("").to_string();
     format!("at {at}:\n{}\nvs\n{}", cut(&a), cut(&b))
 }
+
+/// Typing in a long shared document stays fast: each keystroke is diffed, inverted for undo and
+/// sent without touching the rest of the document. (`cargo test --release -- --ignored collab::tests::typing_in_a_long_document`)
+#[test]
+#[ignore]
+fn typing_in_a_long_document() {
+    let lines: Vec<String> = (0..5000).map(|i| format!("Paragraph {i} with some ordinary text in it, long enough to wrap.")).collect();
+    let refs: Vec<&str> = lines.iter().map(String::as_str).collect();
+    let mut srv = Server::new();
+    let mut p = people(&doc(&refs), 2);
+    at(&mut p[0], 2500, 10);
+    let t = std::time::Instant::now();
+    for _ in 0..200 {
+        run(&mut p[0], "text.insert", json!({"text": "x"}));
+    }
+    let typing = t.elapsed();
+    let t = std::time::Instant::now();
+    srv.settle(&mut p);
+    let sync = t.elapsed();
+    assert_same(&p);
+    eprintln!("200 keystrokes: {typing:?} ({:?} each); sending and receiving: {sync:?}", typing / 200);
+    assert!(typing.as_millis() < 4000, "typing took {typing:?}");
+}
