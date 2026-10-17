@@ -40,6 +40,7 @@ modules:
       - install -Dm755 bin/wordcraft /app/bin/wordcraft
       - install -Dm755 bin/wordcraft-cli /app/bin/wordcraft-cli
       - install -Dm644 share/applications/uk.co.aegeanlogic.wordlogic.desktop /app/share/applications/uk.co.aegeanlogic.wordlogic.desktop
+      - install -Dm644 share/applications/uk.co.aegeanlogic.wordlogic.links.desktop /app/share/applications/uk.co.aegeanlogic.wordlogic.links.desktop
       - install -Dm644 share/mime/packages/uk.co.aegeanlogic.wordlogic.xml /app/share/mime/packages/uk.co.aegeanlogic.wordlogic.xml
       # Already has the release's version and date substituted by package.sh.
       - install -Dm644 share/metainfo/uk.co.aegeanlogic.wordlogic.metainfo.xml /app/share/metainfo/uk.co.aegeanlogic.wordlogic.metainfo.xml

@@ -1,6 +1,7 @@
 //! WordCraft desktop app.
 //!
-//! Usage: `wordcraft [--control <port>] [--sample] [files…]`; `--help` prints `USAGE`.
+//! Usage: `wordcraft [--control <port>] [--sample] [files…] [wordlogic://open?…]`; `--help` prints
+//! `USAGE`.
 //!
 //! `--control <port>` (or `WORDCRAFT_CONTROL_PORT`) starts a localhost JSON-lines control server:
 //! `{"id":1,"key":"…","method":"engine.execute","params":{"command":"text.insert","params":{"text":"Hi"}}}`.
@@ -81,6 +82,8 @@ impl eframe::App for App {
             {
                 ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
                 self.0.quit_requested = false;
+                // That path skips `on_exit`: leave a shared document's session first.
+                self.4.shutdown(&mut self.0);
                 schedule_macos_terminate(&self.0, self.2.as_ref());
             }
             #[cfg(not(target_os = "macos"))]
@@ -97,6 +100,8 @@ impl eframe::App for App {
         self.3.show(frame);
     }
     fn on_exit(&mut self) {
+        // Leave a shared document's session (the others see this person go).
+        self.4.shutdown(&mut self.0);
         print::finish_pending_jobs();
         save_prefs(&self.0);
         if let Some(key_file) = &self.2 {
@@ -290,11 +295,14 @@ wordcraft — the WordLogic desktop app
 
 USAGE:
   wordcraft [--sample] [--control PORT] [FILE…]
+  wordcraft wordlogic://open?server=SERVER&path=PATH
 
 OPTIONS:
   --sample            open the sample document
   --control PORT      start the localhost control server on PORT, for agents and scripts
                       (or set WORDCRAFT_CONTROL_PORT); see docs/control-protocol.md
+  wordlogic://…       open a document from Nextcloud (Open in Desktop App), signing in first
+                      if needed
   --version           print the version
   -h, --help          print this help
 ";
@@ -344,6 +352,7 @@ fn main() -> eframe::Result {
     logging::install_panic_hook();
     let mut control_port: Option<u16> = std::env::var("WORDCRAFT_CONTROL_PORT").ok().and_then(|p| p.parse().ok());
     let mut files = Vec::new();
+    let mut links: Vec<String> = Vec::new();
     let mut sample = false;
     let (args, other_files) = text_args();
     let mut bad_control: Option<Option<String>> = None;
@@ -368,6 +377,8 @@ fn main() -> eframe::Result {
                 let _ = std::io::Write::write_all(&mut std::io::stdout(), USAGE.as_bytes());
                 return Ok(());
             }
+            // "Open in Desktop App" in the browser: a document in Nextcloud (`nextcloud.rs`).
+            a if a.get(..10).is_some_and(|p| p.eq_ignore_ascii_case("wordlogic:")) => links.push(a.to_string()),
             _ => files.push(a),
         }
     }
@@ -444,11 +455,16 @@ fn main() -> eframe::Result {
             let mut session = Session::new(doc);
             session.system_region = region;
             // Nextcloud, as OneDrive is to Word: the File view's Nextcloud places and sharing.
-            let nextcloud = nextcloud::Nextcloud::new(
+            let mut nextcloud = nextcloud::Nextcloud::new(
                 wordcraft_control_key::settings_dir().filter(|_| prefs_enabled()).map(|d| d.join("nextcloud.json")),
                 cache_dir().filter(|_| prefs_enabled()),
                 nextcloud::open_in_browser,
             );
+            for link in &links {
+                if !nextcloud.open_link(link) {
+                    log::warn!("not a WordLogic link: {link}");
+                }
+            }
             let mut app = WordApp::new(session, services(file_dialog, &cc.egui_ctx, nextcloud.cloud()));
             load_prefs(&mut app);
             load_user_dictionary(&mut app);
@@ -484,7 +500,7 @@ fn main() -> eframe::Result {
             // Nothing to open (no files, no sample, no control channel driving the editor): start
             // on File › Home, as Word does (#766), unless the Start screen option is off. Files
             // macOS hands over later open on top of it and close it (`apple_events`).
-            if files.is_empty() && other_files.is_empty() && !sample && control_port.is_none() {
+            if files.is_empty() && other_files.is_empty() && links.is_empty() && !sample && control_port.is_none() {
                 app.start_screen();
             }
             for f in files {

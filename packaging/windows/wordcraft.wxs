@@ -153,6 +153,15 @@
         <RegistryValue Root="HKLM" Key="Software\Classes\WordLogic.PlainText\shell\open\command" Value="&quot;[#WordcraftExe]&quot; &quot;%1&quot;" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\.txt\OpenWithProgids" Name="WordLogic.PlainText" Value="" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\Applications\wordcraft.exe\SupportedTypes" Name=".txt" Value="" Type="string" />
+
+        <!-- wordlogic:// links: Open in Desktop App from Nextcloud in the browser
+             (`wordlogic://open?server=…&path=…`, handled in apps/wordcraft/src/nextcloud.rs).
+             Windows looks for a value named "URL Protocol"; its content isn't read (WiX rejects an
+             empty Value, so it names the scheme). -->
+        <RegistryValue Root="HKLM" Key="Software\Classes\wordlogic" Value="URL:WordLogic" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\wordlogic" Name="URL Protocol" Value="wordlogic" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\wordlogic\DefaultIcon" Value="&quot;[#WordcraftExe]&quot;,0" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\wordlogic\shell\open\command" Value="&quot;[#WordcraftExe]&quot; &quot;%1&quot;" Type="string" />
       </Component>
 
       <Component Id="WordcraftCli">

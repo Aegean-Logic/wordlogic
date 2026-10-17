@@ -1,6 +1,6 @@
 # Real-time co-editing: design
 
-Status: engine done (phase 1), 2026-10-17. Fork-specific (WordLogic, Aegean Logic). Not upstream
+Status: engine done (phase 1); desktop app joins sessions (phase 4, desktop part), 2026-10-17. Fork-specific (WordLogic, Aegean Logic). Not upstream
 behaviour. Sibling of GridLogic's `docs/co-editing.md`: same server, same log protocol, a
 different merge for text.
 
@@ -125,5 +125,46 @@ back with a message. Opening another document in the same window ends sharing.
 |---|---|
 | 2. Transport | Bridge messages in `apps/wordcraft-web` (`wordcraft:collab*`, as in `../wordcraft-nextcloud` README § Protocol); checkpoint writer with snapshot |
 | 3. Presence | Others' carets and selections with names and colours; who's editing |
-| 4. Sharing and desktop | Share dialog through Nextcloud; Nextcloud in the desktop app's File view; Open in Desktop App (`wordlogic://`) |
+| 4. Sharing and desktop | Share dialog through Nextcloud; **desktop part done:** Nextcloud in the desktop app's File view, desktop co-editing, Open in Desktop App (`wordlogic://`) |
 | 5. Hardening | Cell-by-cell table merging; large-op caps tuned; performance on very long documents |
+
+### The desktop app (phase 4)
+
+As in GridLogic (`../gridcraft`, `apps/gridcraft/src/nextcloud.rs`), adapted to one document per
+window:
+
+- **Nextcloud in the File view** (`apps/wordcraft/src/nextcloud.rs`, `crates/ui-egui/src/cloud_files.rs`).
+  File › Account signs in with Nextcloud's Login Flow v2; the app password goes to the system
+  keychain. File › Open and Save As browse Nextcloud over WebDAV, and Recent reopens a Nextcloud
+  document from Nextcloud. A document there is worked on as a copy in the cache folder, tied to the
+  Nextcloud file. AutoSave is on by default for it, as Word's is for OneDrive files, and each save
+  goes back with `If-Match` on the version it came from. If someone else changed the file, the user
+  chooses: Keep both, Use mine or Use Nextcloud's. The host's side of the UI is `cloud::Cloud`
+  (GridLogic's Share dialog `Cloud`, with `files` and `location`); the desktop also answers the
+  Share dialog's `share.*` operations through Nextcloud's sharing API.
+- **Co-editing** (`apps/wordcraft/src/nextcloud/coedit.rs`). A document opened from Nextcloud in a
+  format WordLogic saves in place (as the browser's editor co-edits) joins the file's session
+  through the same `/apps/wordcraft/collab/*` routes, with the app password; `OCS-APIRequest` takes
+  the calls through Nextcloud's CSRF check. The desktop downloads the file and joins pinned to its
+  ETag. When the checkpoint keeps a state snapshot (`hasState`, `GET collab/state`), it opens that
+  with `collab_load_snapshot` instead of the file, then catches up on the log. A worker thread then
+  does what `collab.js` does: it pushes ops one at a time, polls for everyone else's (sending this
+  person's `collab_presence` as `sel`), and writes checkpoints. The editor with the lowest client
+  id writes them every 20 entries or 30 seconds, and a Save here writes one (at most every 10 s,
+  as AutoSave saves often): the file, with `If-Match`, then `POST checkpoint` with
+  `state` (`collab::snapshot` of the confirmed document). While shared, Save and AutoSave don't
+  send the local copy; its record follows the session's saves, so reopening it later fetches
+  Nextcloud's version. A copy that can't follow the log (409, a refused op) reopens the current
+  file and rejoins. Opening another document in the window, or quitting, leaves the session.
+- **Open in Desktop App.** The browser's `wordlogic://open?server=…&path=…` link (the editor's
+  title bar with `desktop=1`, and the Files action) starts WordLogic with the link. The desktop
+  opens the file from that server, after signing in there if needed (File › Account comes up with
+  the address filled in). The scheme is registered by the Windows installer and on Linux (a hidden
+  `.links.desktop` entry taking `%u`). macOS doesn't handle it yet (it arrives as a `GetURL` Apple
+  event). There is no single instance: each link opens its own window, as each document does.
+- **Tested** against a fake Nextcloud on a local port (`nextcloud/fake_server.rs`, WebDAV plus
+  the sequencer): opening, saving back, conflicts, joining from a snapshot with an engine session
+  standing in for the browser, edits both ways, presence, checkpoints with snapshots, rejoining,
+  leaving, links. The File view is tested with a fake cloud (`crates/ui-egui/tests/cloud_files.rs`).
+- **Not yet:** others' carets on the desktop's page and the Share dialog come with the web
+  branch's presence painting and `share.rs`; until then the status bar says who joined or left.

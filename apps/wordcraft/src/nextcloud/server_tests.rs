@@ -1,11 +1,14 @@
 //! The desktop's Nextcloud end to end, against a fake Nextcloud on a local port
 //! ([`super::fake_server`]): listing and opening files, sending saves back with ETags, conflicts,
-//! and Save As.
+//! Save As, and co-editing a document with someone in the browser (a second engine session
+//! standing in for the browser's WordLogic) through the app's sequencer, state snapshots and
+//! checkpoints included.
 
 use std::time::{Duration, Instant};
 
 use serde_json::json;
 use wordcraft_engine::Session;
+use wordcraft_engine::collab::Incoming;
 use wordcraft_engine::doc::{Document, StoryRef};
 use wordcraft_ui_egui::{Services, WordApp};
 
@@ -81,6 +84,7 @@ fn files_list_open_and_save_back_with_etags() {
     let local = opened["localPath"].as_str().unwrap().to_string();
     assert_eq!(text_of(&std::fs::read(&local).unwrap()), "Hello");
     assert_eq!((nc.cloud().location_of(&local)).as_deref(), Some("Docs/Report.docx"));
+    assert_eq!(opened["shared"], true, "a .docx joins its co-editing session");
 
     // Saved here: sent over the version it came from.
     std::fs::write(&local, docx("Hello again")).unwrap();
@@ -119,9 +123,11 @@ fn save_as_asks_before_replacing_and_names_a_document() {
 }
 
 #[test]
-fn a_document_from_nextcloud_opens_and_saves_back() {
+fn a_document_from_nextcloud_without_the_app_opens_and_saves_back() {
     let server = Server::start();
     server.data().put("Docs/Notes.docx", docx("First line"));
+    // No WordLogic app on this server: joining fails, and the document opens unshared.
+    server.data().no_app = true;
     let (mut nc, _dir) = signed_in(&server, "unshared");
     let ctx = egui::Context::default();
     let mut app = app(&nc);
@@ -129,6 +135,7 @@ fn a_document_from_nextcloud_opens_and_saves_back() {
     until(&mut nc, &mut app, &ctx, "an error for a missing file", |app| app.cloud_files.status.as_ref().is_some_and(|s| s.1));
     wordcraft_ui_egui::cloud_files::open_remote(&mut app, "Docs/Notes.docx");
     until(&mut nc, &mut app, &ctx, "the document to open", |app| body(app) == "First line");
+    assert!(!app.session.collab_active());
     assert_eq!(app.cloud_location().as_deref(), Some("Docs/Notes.docx"));
     assert!(app.autosaves(), "on for a document in Nextcloud");
     app.execute("caret.docEnd", json!({})).unwrap();
@@ -144,4 +151,219 @@ fn a_document_from_nextcloud_opens_and_saves_back() {
     app.execute("file.save", json!({})).unwrap();
     until(&mut nc, &mut app, &ctx, "the conflict", |app| !app.cloud_files.conflicts.is_empty());
     assert_eq!(text_of(&server.data().files["Docs/Notes.docx"].bytes), "Theirs", "not overwritten");
+}
+
+/// The browser's WordLogic: an engine session sharing the same document through the log.
+struct Browser {
+    s: Session,
+}
+
+impl Browser {
+    /// Sends its edit to the server's log and takes the server's answer back.
+    fn push(&mut self, server: &Server, path: &str) {
+        let out = self.s.collab_outgoing().unwrap();
+        let op = serde_json::to_string(&out.op).unwrap();
+        let seq = {
+            let mut d = server.data();
+            let session = d.session_of(path).unwrap();
+            let seq = session.log.last().map_or(session.checkpoint_seq, |e| e.0) + 1;
+            session.log.push((seq, out.client, out.client_seq, out.base, op));
+            seq
+        };
+        self.s.collab_receive(Incoming { seq, client: out.client, client_seq: out.client_seq, base: out.base, op: out.op }).unwrap();
+    }
+
+    /// Takes the log entries it hasn't had.
+    fn catch_up(&mut self, server: &Server, path: &str) {
+        let entries = server.data().session_of(path).unwrap().log.clone();
+        for (seq, client, client_seq, base, op) in entries {
+            if seq > self.s.collab_seq().unwrap() {
+                let op = serde_json::from_str(&op).unwrap();
+                self.s.collab_receive(Incoming { seq, client, client_seq, base, op }).unwrap();
+            }
+        }
+    }
+
+    fn text(&self) -> String {
+        self.s.doc.plain_text(StoryRef::Body)
+    }
+}
+
+#[test]
+fn co_editing_with_the_browser_from_a_state_snapshot() {
+    let path = "Shared/Plan.docx";
+    let server = Server::start();
+    // The browser opened the file and started the session; it typed, and saved a checkpoint with
+    // the engine's snapshot.
+    let base = Document::from_text("Plan");
+    let etag0 = server.data().put(path, wordcraft_engine::io::save_bytes("x.docx", &base).unwrap());
+    let file_id = server.data().files[path].id;
+    server.data().sessions.insert(
+        file_id,
+        super::fake_server::Session {
+            file_id,
+            checkpoint_etag: etag0,
+            next_client: 1,
+            members: vec![(1, "Bo Lee".into(), "{}".into(), true, true)],
+            ..Default::default()
+        },
+    );
+    let mut browser = Browser { s: Session::new(base) };
+    browser.s.collab_start(1, 0).unwrap();
+    browser.s.run("caret.docEnd", &json!({})).unwrap();
+    browser.s.run("text.insert", &json!({"text": " for the year"})).unwrap();
+    browser.push(&server, path);
+    let (seq, state) = browser.s.collab_snapshot().unwrap().unwrap();
+    // The file as the checkpoint wrote it. Its text isn't the shared document's, so the test
+    // tells the snapshot from the file.
+    let etag = server.data().put(path, docx("What the file says"));
+    {
+        let mut d = server.data();
+        let session = d.session_of(path).unwrap();
+        session.checkpoint_seq = seq;
+        session.checkpoint_etag = etag;
+        session.snapshot = Some((seq, state));
+    }
+    // More typing after the checkpoint.
+    browser.s.run("text.insert", &json!({"text": "!"})).unwrap();
+    browser.push(&server, path);
+
+    // The desktop opens it from Nextcloud and joins.
+    let (mut nc, _dir) = signed_in(&server, "coedit");
+    let ctx = egui::Context::default();
+    let mut app = app(&nc);
+    wordcraft_ui_egui::cloud_files::open_remote(&mut app, path);
+    until(&mut nc, &mut app, &ctx, "the shared document", |app| app.session.collab_active());
+    assert_eq!(body(&app), browser.text(), "the snapshot, then the log");
+    assert_eq!(body(&app), "Plan for the year!");
+
+    // The desktop types; the browser gets it.
+    app.execute("caret.docEnd", json!({})).unwrap();
+    app.execute("text.insert", json!({"text": " Signed off."})).unwrap();
+    let desktop = app.session.collab_client().unwrap();
+    until(&mut nc, &mut app, &ctx, "the desktop's edit in the log", |_| server.data().session_of(path).unwrap().log.iter().any(|e| e.1 == desktop));
+    browser.catch_up(&server, path);
+    assert_eq!(browser.text(), "Plan for the year! Signed off.");
+
+    // The browser types; the desktop gets it, and its caret stays where it was.
+    browser.s.run("caret.docStart", &json!({})).unwrap();
+    browser.s.run("text.insert", &json!({"text": "2027 "})).unwrap();
+    browser.push(&server, path);
+    until(&mut nc, &mut app, &ctx, "the browser's edit on the desktop", |app| body(app) == "2027 Plan for the year! Signed off.");
+    app.execute("text.insert", json!({"text": " Thanks"})).unwrap();
+    assert_eq!(body(&app), "2027 Plan for the year! Signed off. Thanks");
+
+    // The desktop's caret reaches the others.
+    until(&mut nc, &mut app, &ctx, "the desktop's position", |_| {
+        server.data().session_of(path).unwrap().members.iter().any(|m| m.0 == desktop && m.2.contains("anchor"))
+    });
+
+    // Save writes a checkpoint: the file, and the snapshot of the shared document beside it.
+    until(&mut nc, &mut app, &ctx, "the last edit confirmed", |app| !app.session.collab_pending());
+    let typed = app.session.collab_seq().unwrap();
+    app.execute("file.save", json!({})).unwrap();
+    until(&mut nc, &mut app, &ctx, "the checkpoint", |_| !server.data().session_of(path).unwrap().checkpoints.is_empty());
+    let (by, at, _, state) = server.data().session_of(path).unwrap().checkpoints[0].clone();
+    assert_eq!(by, desktop);
+    assert_eq!(text_of(&server.data().files[path].bytes), "2027 Plan for the year! Signed off. Thanks");
+    let snapshot = wordcraft_engine::collab::from_snapshot(&state).unwrap();
+    assert_eq!(snapshot.plain_text(StoryRef::Body), "2027 Plan for the year! Signed off. Thanks");
+    // (Saving stamps the document's properties, itself a shared edit after the text.)
+    assert!(at >= typed, "the checkpoint has everything typed ({at} < {typed})");
+    // The copy here follows the session's saves: opening it again later fetches Nextcloud's.
+    let local = app.session.path.as_ref().unwrap().to_string_lossy().to_string();
+    let state = nc.state.clone();
+    until(&mut nc, &mut app, &ctx, "the copy's record to follow the checkpoint", |_| {
+        let saved = format!("\"{}\"", server.data().files[path].etag);
+        lock(&state).stored.files.get(&local).is_some_and(|r| r.etag.as_deref() == Some(saved.as_str()))
+    });
+
+    // Quitting leaves the session.
+    nc.shutdown(&mut app);
+    assert!(!app.session.collab_active());
+    let start = Instant::now();
+    while server.data().session_of(path).unwrap().members.iter().any(|m| m.0 == desktop && m.4) {
+        assert!(start.elapsed() < Duration::from_secs(5), "left the session");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert!(server.data().without_ocs_header.is_empty(), "every app call passes Nextcloud's CSRF check");
+}
+
+#[test]
+fn joining_from_the_file_when_no_snapshot_is_kept() {
+    let path = "Plain.docx";
+    let server = Server::start();
+    server.data().put(path, docx("Just the file"));
+    let (mut nc, _dir) = signed_in(&server, "nosnapshot");
+    let ctx = egui::Context::default();
+    let mut app = app(&nc);
+    wordcraft_ui_egui::cloud_files::open_remote(&mut app, path);
+    until(&mut nc, &mut app, &ctx, "the shared document", |app| app.session.collab_active());
+    assert_eq!(body(&app), "Just the file");
+    assert!(server.data().requests.iter().all(|(_, p)| !p.contains("collab/state")), "nothing to fetch");
+    nc.shutdown(&mut app);
+}
+
+#[test]
+fn the_shared_state_is_dropped_when_another_document_opens() {
+    let path = "Shared.docx";
+    let server = Server::start();
+    server.data().put(path, docx("Shared"));
+    let (mut nc, _dir) = signed_in(&server, "replaced");
+    let ctx = egui::Context::default();
+    let mut app = app(&nc);
+    wordcraft_ui_egui::cloud_files::open_remote(&mut app, path);
+    until(&mut nc, &mut app, &ctx, "the shared document", |app| app.session.collab_active());
+    let client = app.session.collab_client().unwrap();
+    app.execute("file.new", json!({})).unwrap();
+    until(&mut nc, &mut app, &ctx, "sharing to end", |_| nc_is_unshared(&server, path, client));
+    assert!(!app.session.collab_active());
+}
+
+/// Whether `client` left the session for `path`.
+fn nc_is_unshared(server: &Server, path: &str, client: u64) -> bool {
+    server.data().session_of(path).is_some_and(|s| s.members.iter().any(|m| m.0 == client && !m.4))
+}
+
+#[test]
+fn a_lost_session_is_rejoined_from_the_file() {
+    let path = "Rejoin.docx";
+    let server = Server::start();
+    server.data().put(path, docx("Before"));
+    let (mut nc, _dir) = signed_in(&server, "rejoin");
+    let ctx = egui::Context::default();
+    let mut app = app(&nc);
+    wordcraft_ui_egui::cloud_files::open_remote(&mut app, path);
+    until(&mut nc, &mut app, &ctx, "the shared document", |app| app.session.collab_active());
+    // The server forgets the session (cleaned up, or restarted): this copy can't follow it.
+    server.data().sessions.clear();
+    server.data().put(path, docx("Changed meanwhile"));
+    until(&mut nc, &mut app, &ctx, "a new session, from the file as it is now", |app| {
+        app.session.collab_active() && body(app) == "Changed meanwhile"
+    });
+    assert_eq!(server.data().sessions.len(), 1, "joined again");
+    nc.shutdown(&mut app);
+}
+
+#[test]
+fn a_desktop_link_opens_the_document_once_signed_in_to_that_server() {
+    let server = Server::start();
+    server.data().put("Team/Minutes.docx", docx("Minutes"));
+    let (mut nc, _dir) = signed_in(&server, "link");
+    let ctx = egui::Context::default();
+    let mut app = app(&nc);
+    let link = format!("wordlogic://open?server={}&path={}", encode(&server.url), encode("/Team/Minutes.docx"));
+    assert!(nc.open_link(&link));
+    until(&mut nc, &mut app, &ctx, "the linked document", |app| app.session.collab_active());
+    assert_eq!(body(&app), "Minutes");
+    assert_eq!(app.cloud_location().as_deref(), Some("Team/Minutes.docx"));
+    nc.shutdown(&mut app);
+
+    // Another server: File › Account asks to sign in there first, with its address filled in.
+    let mut app = self::app(&nc);
+    assert!(nc.open_link("wordlogic://open?server=https%3A%2F%2Fother.example&path=Doc.docx"));
+    nc.poll(&mut app, &ctx);
+    assert!(app.ui.backstage && app.ui.backstage_page == "account");
+    assert_eq!(app.cloud_files.server, "other.example");
+    assert!(server.data().requests.iter().all(|(_, p)| !p.contains("Doc.docx")), "nothing asked of the wrong server");
 }

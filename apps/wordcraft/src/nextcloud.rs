@@ -7,7 +7,8 @@
 //! A document in Nextcloud is worked on as a copy in this computer's cache folder, tied to the
 //! Nextcloud file: saving the copy (Save, or AutoSave) sends it to Nextcloud, unless someone
 //! changed the Nextcloud file in the meantime (then the user chooses what to keep). Uploaded
-//! documents are tied the same way.
+//! documents are tied the same way. A document opened from Nextcloud joins its live co-editing
+//! session with the browser ([`coedit`]).
 //!
 //! The cloud's requests are queued and picked up by [`Nextcloud::poll`] on the UI thread, which
 //! knows the document they are about; the talking happens on worker threads, which answer in the
@@ -19,6 +20,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, SystemTime};
 
+mod coedit;
 #[cfg(test)]
 mod fake_server;
 #[cfg(test)]
@@ -42,14 +44,16 @@ const SIGN_IN_POLLS: u32 = 600;
 const MAX_ANSWER_BYTES: u64 = 256 << 20;
 /// How often a saved document's file is looked at for changes to send.
 const SAVE_CHECK_SECONDS: f64 = 1.0;
+/// How long a joined session waits for its document to open (the Save Changes prompt may be up).
+const JOIN_WAIT_SECONDS: f64 = 120.0;
 /// Nextcloud's share types and file permissions (read; read + update).
 const SHARE_TYPES: [(&str, i64); 6] = [("user", 0), ("group", 1), ("link", 3), ("email", 4), ("remote", 6), ("team", 7)];
 const VIEW: i64 = 1;
 const EDIT: i64 = 3;
 /// What the File view lists and opens from Nextcloud.
 const OPENS: [&str; 11] = ["docx", "docm", "dotx", "dotm", "doc", "dot", "odt", "rtf", "txt", "md", "markdown"];
-/// Formats WordLogic writes back into the file itself: sent to Nextcloud when saved (as
-/// `wordcraft-nextcloud`'s editor saves them; .doc and .dot are imports).
+/// Formats WordLogic writes back into the file itself: sent to Nextcloud when saved, and
+/// co-edited (as `wordcraft-nextcloud`'s editor does; .doc and .dot are imports).
 const SAVES_IN_PLACE: [&str; 9] = ["docx", "docm", "dotx", "dotm", "odt", "rtf", "txt", "md", "markdown"];
 /// Formats that keep the whole document: Save As and uploads to Nextcloud use one of these.
 const DOCUMENTS: [&str; 6] = ["docx", "docm", "dotx", "dotm", "odt", "rtf"];
@@ -130,6 +134,14 @@ struct State {
     /// what to keep ([`resolve`]); and those not yet put to the user.
     conflicted: HashSet<String>,
     conflicts: Vec<(String, String)>,
+    /// Sessions joined for files just downloaded, waiting for their document to open.
+    joined: Vec<(String, coedit::Joined)>,
+    /// Files downloaded again to rejoin their session: reopen, then start sharing.
+    rejoined: Vec<(String, coedit::Joined)>,
+    /// The local copy being co-edited: its saves go to the session, not the save-back.
+    shared: Option<String>,
+    /// Files to open (from "Open in Desktop App").
+    open_now: Vec<String>,
 }
 
 /// Records that `stored` changed and writes it out (left for the next frame if that fails).
@@ -173,6 +185,12 @@ pub struct Nextcloud {
     /// for).
     seen: (u64, bool),
     open_url: OpenUrl,
+    /// The document being co-edited live, if any.
+    coedit: Option<coedit::Coedit>,
+    /// A joined session waiting for its document to open, since when.
+    pending_join: Option<(String, coedit::Joined, f64)>,
+    /// A `wordlogic://open` link waiting to be followed: (server, path, sign-in asked for).
+    link: Option<(String, String, bool)>,
 }
 
 fn lock(state: &Mutex<State>) -> MutexGuard<'_, State> {
@@ -199,6 +217,9 @@ impl Nextcloud {
             modified: HashMap::new(),
             seen: (0, false),
             open_url,
+            coedit: None,
+            pending_join: None,
+            link: None,
         }
     }
 
@@ -219,8 +240,8 @@ impl Nextcloud {
         }
     }
 
-    /// Every frame: starts the cloud's requests, sends the saved document to Nextcloud, and shows
-    /// what came of it.
+    /// Every frame: starts the cloud's requests, sends the saved document to Nextcloud, runs a
+    /// shared document, and shows what came of it.
     pub fn poll(&mut self, app: &mut WordApp, ctx: &egui::Context) {
         let requests = std::mem::take(&mut *self.requests.lock().unwrap_or_else(|e| e.into_inner()));
         for (id, op, params) in requests {
@@ -250,9 +271,11 @@ impl Nextcloud {
                 self.modified.remove(&path);
             }
         }
+        self.follow_link(app, ctx);
         let seen = (app.session.document_id(), app.session.dirty);
         let just_saved = self.seen.0 == seen.0 && self.seen.1 && !seen.1;
         self.seen = seen;
+        self.poll_coedit(app, ctx, just_saved);
         let now = ctx.input(|i| i.time);
         if just_saved || now - self.checked_at >= SAVE_CHECK_SECONDS || !self.modified.values().all(Option::is_some) {
             self.checked_at = now;
@@ -281,6 +304,155 @@ impl Nextcloud {
                 app.status(text);
             }
         }
+    }
+
+    /// Live co-editing: starts a session joined for a file just opened, and runs the shared one.
+    fn poll_coedit(&mut self, app: &mut WordApp, ctx: &egui::Context, just_saved: bool) {
+        let now = ctx.input(|i| i.time);
+        let (rejoined, joined, open_now) = {
+            let mut s = lock(&self.state);
+            (std::mem::take(&mut s.rejoined), std::mem::take(&mut s.joined), std::mem::take(&mut s.open_now))
+        };
+        for local in open_now {
+            // As File › Open does: unsaved changes to the document showing are asked about first.
+            match app.run("file.open", json!({"path": local})) {
+                Ok(_) => {
+                    app.ui.backstage = false;
+                    app.canvas.want_focus = true;
+                }
+                Err(e) => app.cloud_files.notice = Some(("Couldn't open from Nextcloud".into(), e)),
+            }
+        }
+        for (local, j) in rejoined {
+            // The copy here is behind the session: open the file as it is now in its place (what
+            // wasn't shared yet is lost, as when the browser reloads).
+            if let Err(e) = app.execute("file.open", json!({"path": local})) {
+                app.cloud_files.notice = Some(("Co-editing stopped".into(), e));
+                j.leave(&self.state);
+                continue;
+            }
+            self.replace_pending(Some((local, j, now)));
+        }
+        for (local, j) in joined {
+            self.replace_pending(Some((local, j, now)));
+        }
+        if let Some((local, j, since)) = self.pending_join.take() {
+            let open = app.session.path.as_deref().is_some_and(|p| same_path(&p.to_string_lossy(), &local));
+            if open && self.coedit.is_none() {
+                match coedit::Coedit::start(app, j, local.clone(), self.state.clone(), ctx) {
+                    Ok(c) => {
+                        lock(&self.state).shared = Some(local);
+                        self.coedit = Some(c);
+                    }
+                    Err(e) => {
+                        log::warn!("co-editing {local}: {e}");
+                        app.status("This document opened without live co-editing.");
+                    }
+                }
+            } else if now - since > JOIN_WAIT_SECONDS || self.coedit.is_some() {
+                // A document that never opened (the open was cancelled) isn't shared.
+                j.leave(&self.state);
+            } else {
+                self.pending_join = Some((local, j, since));
+            }
+        }
+        let Some(c) = self.coedit.as_mut() else { return };
+        if app.session.collab_pending() {
+            // An edit not sent yet (made after this frame's poll): come back for it, even in an
+            // idle window.
+            ctx.request_repaint_after(Duration::from_millis(150));
+        }
+        match c.poll(app, now, just_saved) {
+            coedit::Status::Going => {}
+            coedit::Status::Over => {
+                c.stop(app);
+                self.coedit = None;
+                lock(&self.state).shared = None;
+            }
+            coedit::Status::Rejoin => {
+                c.stop(app);
+                let (local, remote) = (c.local.clone(), c.remote.clone());
+                self.coedit = None;
+                lock(&self.state).shared = None;
+                app.status("Reconnecting to the shared document…");
+                let (state, ctx) = (self.state.clone(), ctx.clone());
+                let _ = std::thread::Builder::new().name("nextcloud rejoin".into()).spawn(move || {
+                    match download_and_join(&state, &remote, true) {
+                        Ok((_, Some(j))) => lock(&state).rejoined.push((local, j)),
+                        Ok((_, None)) => {}
+                        Err(e) => lock(&state).notices.push(("Co-editing stopped".into(), e, true)),
+                    }
+                    ctx.request_repaint();
+                });
+            }
+        }
+    }
+
+    /// A newer joined session replaces one still waiting for its document (which is left).
+    fn replace_pending(&mut self, next: Option<(String, coedit::Joined, f64)>) {
+        if let Some((_, old, _)) = std::mem::replace(&mut self.pending_join, next) {
+            old.leave(&self.state);
+        }
+    }
+
+    /// Before quitting: leave the shared session.
+    pub fn shutdown(&mut self, app: &mut WordApp) {
+        if let Some(c) = self.coedit.take() {
+            c.stop(app);
+            c.join_worker();
+        }
+        self.replace_pending(None);
+    }
+
+    /// "Open in Desktop App" from the browser: `wordlogic://open?server=…&path=…`. The document
+    /// opens once signed in to that server (File › Account is shown, with its address, until then).
+    pub fn open_link(&mut self, url: &str) -> bool {
+        match parse_link(url) {
+            Some((server, path)) => {
+                self.link = Some((server, path, false));
+                true
+            }
+            None => false,
+        }
+    }
+
+    fn follow_link(&mut self, app: &mut WordApp, ctx: &egui::Context) {
+        let Some((server, path, asked)) = self.link.clone() else { return };
+        if self.server().is_some_and(|s| s.eq_ignore_ascii_case(&server)) {
+            self.link = None;
+            let name = path.rsplit('/').next().unwrap_or(&path).to_string();
+            app.status(format!("Opening {name} from Nextcloud…"));
+            self.open_remote(ctx, path);
+        } else if !asked {
+            // Signed out, or into another server: sign in to this one first (once; the document
+            // opens when the sign-in is done).
+            self.link = Some((server.clone(), path.clone(), true));
+            app.cloud_files.server = server.trim_start_matches("https://").to_string();
+            let _ = app.run("ui.backstage", json!({"value": true, "page": "account"}));
+            app.status(format!("Sign in to {server} to open {path}."));
+        }
+    }
+
+    /// Opens `remote` in this server's Nextcloud ("Open in Desktop App"): downloaded, joined, then
+    /// opened by the next frame.
+    fn open_remote(&self, ctx: &egui::Context, remote: String) {
+        let (state, ctx) = (self.state.clone(), ctx.clone());
+        let _ = std::thread::Builder::new().name("nextcloud open".into()).spawn(move || {
+            match open_file(&state, &remote, &[]) {
+                Ok(r) => {
+                    if let Some(local) = r.get("localPath").and_then(Json::as_str) {
+                        lock(&state).open_now.push(local.to_string());
+                    }
+                }
+                Err(e) => lock(&state).notices.push(("Couldn't open from Nextcloud".into(), e, true)),
+            }
+            ctx.request_repaint();
+        });
+    }
+
+    /// The server signed in to, if any (`https://cloud.example.com`).
+    fn server(&self) -> Option<String> {
+        lock(&self.state).stored.account.as_ref().map(|a| a.server.clone())
     }
 
     /// The document showing, for a request about it.
@@ -322,6 +494,19 @@ impl Nextcloud {
         // The record's own spelling of the path, whatever spelling the document was opened by.
         let Some(path) = tie_key(&s.stored.files, &local) else { return };
         let Some(remote) = s.stored.files.get(&path).cloned() else { return };
+        if s.shared.as_deref().is_some_and(|p| same_path(p, &path)) {
+            // Co-edited: the session saves the file; saves here only keep the copy, so its
+            // record stays in step (opening it again fetches Nextcloud's version).
+            let now = mtime(Path::new(&path));
+            if remote.synced != now
+                && let Some(r) = s.stored.files.get_mut(&path)
+            {
+                r.synced = now;
+                persist(&mut s);
+            }
+            self.modified.remove(&path);
+            return;
+        }
         let modified = std::fs::metadata(&path).and_then(|m| m.modified()).ok();
         let Some(seen) = self.modified.get(&path).copied() else {
             // First look since the app started (or since it came from Nextcloud): a file saved
@@ -356,6 +541,27 @@ impl Nextcloud {
     }
 }
 
+/// `wordlogic://open?server=…&path=…`: (server, path in the user's files).
+fn parse_link(url: &str) -> Option<(String, String)> {
+    let query = url.strip_prefix("wordlogic://open?").or_else(|| url.strip_prefix("wordlogic://open/?"))?;
+    let mut server = String::new();
+    let mut path = String::new();
+    for pair in query.split('&') {
+        let (k, v) = pair.split_once('=').unwrap_or((pair, ""));
+        match k {
+            "server" => server = decode(&v.replace('+', " ")),
+            "path" => path = decode(&v.replace('+', " ")),
+            _ => {}
+        }
+    }
+    let server = normalise_server(&server).ok()?;
+    let path = path.trim_matches('/').to_string();
+    if path.is_empty() || path.split('/').any(|p| p == "..") {
+        return None;
+    }
+    Some((server, path))
+}
+
 /// Whether two spellings name the same file: on Windows, `/` and `\` are the same separator
 /// and case doesn't matter.
 fn same_path(a: &str, b: &str) -> bool {
@@ -379,7 +585,7 @@ fn is_document(path: &str) -> bool {
     DOCUMENTS.contains(&extension(path).as_str())
 }
 
-/// Whether a file of this type is saved back as it is.
+/// Whether a file of this type is co-edited and saved back as it is.
 fn saves_in_place(path: &str) -> bool {
     SAVES_IN_PLACE.contains(&extension(path).as_str())
 }
@@ -741,35 +947,66 @@ fn open_file(state: &Mutex<State>, remote: &str, open: &[String]) -> Result<Json
     {
         let mut s = lock(state);
         let behind = s.stored.files.get(&local_text).filter(|r| r.path == remote).is_some_and(|r| local.exists() && r.synced != mtime(&local));
-        if behind {
+        if behind && s.shared.as_deref().is_none_or(|p| !same_path(p, &local_text)) {
             s.send_now.push(local_text.clone());
             return Ok(json!({"localPath": local_text, "unsent": true}));
         }
     }
-    download(state, &remote)?;
-    Ok(json!({"localPath": local_text}))
+    let (_, joined) = download_and_join(state, &remote, false)?;
+    let shared = joined.is_some();
+    if let Some(j) = joined {
+        lock(state).joined.push((local_text.clone(), j));
+    }
+    Ok(json!({"localPath": local_text, "shared": shared}))
 }
 
-/// Downloads a Nextcloud file to its copy here, tied to it.
-fn download(state: &Mutex<State>, remote: &str) -> Result<PathBuf, String> {
+/// Downloads a Nextcloud file to its copy here, tied to it, and joins its co-editing session
+/// pinned to the version downloaded (with the session's state snapshot, when it keeps one).
+/// Without the WordLogic app on the server, or for a type that isn't co-edited, the document
+/// opens unshared.
+fn download_and_join(state: &Mutex<State>, remote: &str, rejoin: bool) -> Result<(PathBuf, Option<coedit::Joined>), String> {
     let local = cache_path(state, remote)?;
     let local_text = local.to_string_lossy().to_string();
     let nc = Connection::open(state)?;
-    let r = nc.send("GET", &nc.dav(remote), &[], Vec::new())?;
-    match r.status {
-        200 => {}
-        404 => return Err("That file isn't in Nextcloud any more.".into()),
-        s => return Err(format!("Nextcloud answered {s} while opening the file.")),
+    let share = saves_in_place(remote) && (rejoin || lock(state).shared.is_none());
+    let mut file_id = None;
+    for attempt in 0..6u32 {
+        let r = nc.send("GET", &nc.dav(remote), &[], Vec::new())?;
+        match r.status {
+            200 => {}
+            404 => return Err("That file isn't in Nextcloud any more.".into()),
+            s => return Err(format!("Nextcloud answered {s} while opening the file.")),
+        }
+        if let Some(dir) = local.parent() {
+            std::fs::create_dir_all(dir).map_err(|e| format!("Couldn't make {}: {e}", dir.display()))?;
+        }
+        std::fs::write(&local, &r.body).map_err(|e| format!("Couldn't write {}: {e}", local.display()))?;
+        {
+            let mut s = lock(state);
+            s.stored.files.insert(local_text.clone(), Remote { path: remote.to_string(), etag: r.etag.clone(), synced: mtime(&local) });
+            s.fresh.push(local_text.clone());
+            persist(&mut s);
+        }
+        let etag = r.etag.clone().unwrap_or_default();
+        if !share || etag.is_empty() {
+            return Ok((local, None));
+        }
+        if file_id.is_none() {
+            file_id = nc.file_id(remote).ok();
+        }
+        let Some(id) = file_id else { return Ok((local, None)) };
+        match coedit::join(&nc, id, &etag, remote) {
+            Ok(Some(j)) => return Ok((local, Some(j))),
+            // Saved for the session since this copy was fetched (or a newer save replaced the
+            // snapshot): fetch it again.
+            Ok(None) => std::thread::sleep(Duration::from_millis(400u64 << attempt)),
+            Err(e) => {
+                log::warn!("co-editing {remote}: {e}");
+                return Ok((local, None));
+            }
+        }
     }
-    if let Some(dir) = local.parent() {
-        std::fs::create_dir_all(dir).map_err(|e| format!("Couldn't make {}: {e}", dir.display()))?;
-    }
-    std::fs::write(&local, &r.body).map_err(|e| format!("Couldn't write {}: {e}", local.display()))?;
-    let mut s = lock(state);
-    s.stored.files.insert(local_text.clone(), Remote { path: remote.to_string(), etag: r.etag, synced: mtime(&local) });
-    s.fresh.push(local_text);
-    persist(&mut s);
-    Ok(local)
+    Ok((local, None))
 }
 
 /// Save As in Nextcloud: where to save the document here (`{localPath}`), tied to `folder/name`
@@ -1230,6 +1467,49 @@ impl Connection {
         self.ocs(method, &endpoint, &[], Some(body))
     }
 
+    /// A call to the WordLogic app's own routes (`/index.php/apps/wordcraft/…`): its status and
+    /// answer. `OCS-APIRequest` lets an app-password call through Nextcloud's CSRF check.
+    fn app_raw(&self, method: &str, endpoint: &str, body: &Json) -> Result<Answer, String> {
+        let url = format!("{}/index.php/apps/wordcraft/{endpoint}", self.server);
+        let mut headers = vec![("OCS-APIRequest", "true".to_string()), ("Accept", "application/json".to_string())];
+        let body = if body.is_null() {
+            Vec::new()
+        } else {
+            headers.push(("Content-Type", "application/json".to_string()));
+            serde_json::to_vec(body).map_err(|e| e.to_string())?
+        };
+        self.send(method, &url, &headers, body)
+    }
+
+    /// [`Connection::app_raw`] with its JSON answer.
+    fn app_status(&self, method: &str, endpoint: &str, body: &Json) -> Result<(u16, Json), String> {
+        let r = self.app_raw(method, endpoint, body)?;
+        Ok((r.status, r.json().unwrap_or(Json::Null)))
+    }
+
+    /// [`Connection::app_status`], an error unless it succeeded.
+    fn app(&self, method: &str, endpoint: &str, body: &Json) -> Result<Json, String> {
+        let (status, answer) = self.app_status(method, endpoint, body)?;
+        if (200..300).contains(&status) {
+            return Ok(answer);
+        }
+        let why = answer.get("error").and_then(Json::as_str).map(str::to_string);
+        Err(why.unwrap_or_else(|| format!("Nextcloud answered {status}.")))
+    }
+
+    /// The Nextcloud file id of a file (co-editing sessions are per file id).
+    fn file_id(&self, path: &str) -> Result<u64, String> {
+        let body = r#"<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns"><d:prop><oc:fileid/></d:prop></d:propfind>"#;
+        let headers = [("Depth", "0".to_string()), ("Content-Type", "application/xml".to_string())];
+        let r = self.send("PROPFIND", &self.dav(path), &headers, body.as_bytes().to_vec())?;
+        let text = String::from_utf8_lossy(&r.body);
+        text.split("fileid>")
+            .nth(1)
+            .and_then(|t| t.split('<').next())
+            .and_then(|id| id.trim().parse().ok())
+            .ok_or_else(|| "Nextcloud didn't give the file's id.".into())
+    }
+
     /// Whether the user may share the file (its WebDAV permissions include R).
     fn can_share(&self, path: &str) -> Result<bool, String> {
         let body =
@@ -1307,6 +1587,18 @@ mod tests {
         assert_eq!(encode("a b/ü"), "a%20b%2F%C3%BC");
         assert_eq!(decode("a%20b%2F%C3%BC"), "a b/ü");
         assert_eq!(decode("100%"), "100%", "a stray percent sign stays");
+    }
+
+    #[test]
+    fn desktop_links_name_a_server_and_a_file() {
+        let mut nc = Nextcloud::new(None, None, |_, _| {});
+        assert!(nc.open_link("wordlogic://open?server=http%3A%2F%2Flocalhost%3A8080&path=%2FWordLogic%20Test%2FReport.docx"));
+        assert_eq!(nc.link, Some(("http://localhost:8080".to_string(), "WordLogic Test/Report.docx".to_string(), false)));
+        assert!(!nc.open_link("wordlogic://open?server=cloud.example"), "no file");
+        assert!(!nc.open_link("https://cloud.example/x"), "not a WordLogic link");
+        assert!(!nc.open_link("gridlogic://open?server=cloud.example&path=x.xlsx"), "GridLogic's");
+        assert!(!nc.open_link("wordlogic://open?server=a%40evil&path=x.docx"), "not a server address");
+        assert!(!nc.open_link("wordlogic://open?server=cloud.example&path=..%2F..%2Fx.docx"), "out of the user's files");
     }
 
     #[test]

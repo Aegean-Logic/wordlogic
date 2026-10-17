@@ -71,6 +71,11 @@ impl Data {
         self.files.insert(path.to_string(), File { bytes, etag: etag.clone(), id });
         etag
     }
+
+    pub fn session_of(&mut self, path: &str) -> Option<&mut Session> {
+        let id = self.files.get(path)?.id;
+        self.sessions.get_mut(&id)
+    }
 }
 
 #[derive(Clone)]
