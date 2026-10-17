@@ -454,6 +454,9 @@ pub struct WordApp {
     /// The others in a shared document (set by the host with [`WordApp::set_presence`]): drawn
     /// in the document and in the title bar.
     pub presence: Vec<Presence>,
+    /// When each of the others (by client id) last moved: their position then, and the time
+    /// (`now_ms`). Their name tag shows for a few seconds after, as on Word for the web.
+    pub(crate) presence_moved: std::collections::HashMap<u64, (wordcraft_doc::Pos, wordcraft_doc::Pos, f64)>,
     /// The Restrict Editing pane (#412).
     pub restrict: dialogs_review::RestrictPane,
     pub status_msg: Option<(String, f64)>,
@@ -612,6 +615,7 @@ impl WordApp {
             colors: None,
             share: None,
             presence: Vec::new(),
+            presence_moved: Default::default(),
             restrict: Default::default(),
             status_msg: None,
             previews: previews::Previews::default(),
@@ -1770,6 +1774,17 @@ impl WordApp {
             .collect();
         self.session.collab_set_others(others);
         let kept = self.session.collab_others().len();
+        // Who moved since the last report (or just arrived): their name shows for a while.
+        let now = now_ms();
+        let mut moved = std::collections::HashMap::with_capacity(people.len());
+        for (p, anchor, focus) in people.iter().take(kept) {
+            let at = match self.presence_moved.get(&p.client) {
+                Some((a, f, t)) if a == anchor && f == focus => *t,
+                _ => now,
+            };
+            moved.insert(p.client, (anchor.clone(), focus.clone(), at));
+        }
+        self.presence_moved = moved;
         self.presence = people.into_iter().map(|(p, ..)| p).take(kept).collect();
     }
 

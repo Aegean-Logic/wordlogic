@@ -47,6 +47,10 @@ pub(super) struct Member {
     /// Where they are, as their WordLogic sent it (`Session::collab_presence`, JSON text).
     #[serde(default)]
     selection: String,
+    /// Seen in the last few seconds: shown to the others. One gone without leaving (a closed
+    /// laptop) stops showing quickly, though it stays a member a while longer.
+    #[serde(default = "yes")]
+    recent: bool,
 }
 
 fn yes() -> bool {
@@ -369,7 +373,7 @@ impl Coedit {
     /// Who came and went, on the status bar.
     fn say_who(&self, app: &mut WordApp, before: &[Member]) {
         let others = |list: &[Member]| -> Vec<(u64, String)> {
-            list.iter().filter(|m| m.client != self.client).map(|m| (m.client, m.name().to_string())).collect()
+            list.iter().filter(|m| m.client != self.client && m.recent).map(|m| (m.client, m.name().to_string())).collect()
         };
         let (was, now) = (others(before), others(&self.members));
         let came: Vec<&str> = now.iter().filter(|p| !was.contains(p)).map(|(_, n)| n.as_str()).collect();
@@ -612,7 +616,7 @@ impl Worker {
 fn others_on_the_page(members: &[Member], me: u64) -> Vec<(Presence, Pos, Pos)> {
     members
         .iter()
-        .filter(|m| m.client != me)
+        .filter(|m| m.client != me && m.recent)
         .filter_map(|m| {
             let (anchor, focus) = m.position()?;
             let name = m.name().chars().filter(|c| !c.is_control()).take(MAX_NAME_CHARS).collect();
@@ -653,11 +657,12 @@ mod tests {
             {"client": 1, "userId": "me", "selection": sel(1)},
             {"client": 2, "userId": "ana", "displayName": "Ana Lopez", "selection": sel(4)},
             {"client": 3, "userId": "bo", "selection": "garbled"},
-            {"client": 4, "userId": "cy"}
+            {"client": 4, "userId": "cy"},
+            {"client": 5, "userId": "di", "selection": sel(2), "recent": false}
         ]))
         .unwrap();
         let others = others_on_the_page(&m, 1);
-        assert_eq!(others.len(), 1, "not me, and only who sent a position that reads");
+        assert_eq!(others.len(), 1, "not me, only who sent a position that reads, and not who stopped showing up");
         let (p, anchor, focus) = &others[0];
         assert_eq!((p.client, p.name.as_str()), (2, "Ana Lopez"));
         assert_eq!(p.color, wordcraft_ui_egui::presence::color_for(2));

@@ -5,7 +5,7 @@
 .DESCRIPTION
   Produces, in $env:DIST (default: dist/release):
     wordcraft-<version>-windows-<arch>.msi            per-machine installer (WiX v5)
-    wordcraft-<version>-windows-<arch>-portable.zip   wordcraft.exe + wordcraft-cli.exe
+    wordcraft-<version>-windows-<arch>-portable.zip   wordlogic.exe + wordcraft-cli.exe
 
   The binaries link the C runtime statically (+crt-static), so neither the MSI nor the portable
   zip needs the Visual C++ redistributable. Signing is delegated to sign.ps1 (skipped with a
@@ -87,9 +87,12 @@ foreach ($check in @(@('wordcraft.exe', 2), @('wordcraft-cli.exe', 3))) {
 $Stage = Join-Path $TargetDir "windows-package\$Arch"
 Remove-Item -Recurse -Force $Stage -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null
-Copy-Item (Join-Path $Bin 'wordcraft.exe'), (Join-Path $Bin 'wordcraft-cli.exe') $Stage
+# The app ships as wordlogic.exe (the cargo binary keeps upstream's name): Windows keys "Open with"
+# and App Paths by file name, so WordLogic and WordCraft installed side by side don't collide.
+Copy-Item (Join-Path $Bin 'wordcraft.exe') (Join-Path $Stage 'wordlogic.exe')
+Copy-Item (Join-Path $Bin 'wordcraft-cli.exe') $Stage
 
-& (Join-Path $PSScriptRoot 'sign.ps1') (Join-Path $Stage 'wordcraft.exe') (Join-Path $Stage 'wordcraft-cli.exe')
+& (Join-Path $PSScriptRoot 'sign.ps1') (Join-Path $Stage 'wordlogic.exe') (Join-Path $Stage 'wordcraft-cli.exe')
 
 # ---- MSI ---------------------------------------------------------------------------------------
 $Msi = Join-Path $Dist "wordcraft-$Version-windows-$Arch.msi"

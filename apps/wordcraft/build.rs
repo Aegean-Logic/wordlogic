@@ -18,7 +18,8 @@ fn main() {
         .set("FileDescription", "WordLogic word processor")
         .set("CompanyName", "Aegean Logic")
         .set("LegalCopyright", "Copyright (c) Aegean Logic and the WordCraft authors. MIT OR Apache-2.0.")
-        .set("OriginalFilename", "wordcraft.exe")
+        // Installed as wordlogic.exe (packaging/windows/package.ps1).
+        .set("OriginalFilename", "wordlogic.exe")
         .set("InternalName", "wordcraft");
     if let Err(e) = res.compile() {
         if std::env::var_os("WORDCRAFT_REQUIRE_WINRES").is_some() {

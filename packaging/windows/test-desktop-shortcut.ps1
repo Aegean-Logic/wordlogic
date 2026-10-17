@@ -85,7 +85,7 @@ function Assert-Package($Package) {
   $key = Join-Path $UninstallRoot $Package.Code
   $registered = Get-ItemProperty -Path $key -ErrorAction Stop
   Assert-That ($registered.DisplayVersion -eq $Package.Version) "Wrong installed product version: $($Package.Version)"
-  foreach ($exe in 'wordcraft.exe', 'wordcraft-cli.exe') {
+  foreach ($exe in 'wordlogic.exe', 'wordcraft-cli.exe') {
     Assert-That (Test-Path (Join-Path $InstallDir $exe)) "$exe missing after installation"
   }
   Assert-That (Test-Path $StartLink) 'The existing Start Menu shortcut is missing'
@@ -103,7 +103,7 @@ function Assert-Desktop([bool] $Enabled) {
   $shortcut = $null
   try {
     $shortcut = $shell.CreateShortcut($DesktopLink)
-    Assert-That ($shortcut.TargetPath -ieq (Join-Path $InstallDir 'wordcraft.exe')) 'Desktop shortcut targets the wrong executable'
+    Assert-That ($shortcut.TargetPath -ieq (Join-Path $InstallDir 'wordlogic.exe')) 'Desktop shortcut targets the wrong executable'
     Assert-That ($shortcut.WorkingDirectory.TrimEnd('\') -ieq $InstallDir.TrimEnd('\')) 'Desktop shortcut has the wrong working directory'
     Assert-That ($shortcut.IconLocation -match '^(.*),\s*0$') 'Desktop shortcut must use icon index zero'
     $iconPath = [Environment]::ExpandEnvironmentVariables($Matches[1].Trim('"'))
@@ -118,7 +118,7 @@ function Assert-Desktop([bool] $Enabled) {
 
 function Assert-Removed($Package) {
   Assert-That (-not (Test-Path (Join-Path $UninstallRoot $Package.Code))) 'MSI still registered after removal'
-  Assert-That (-not (Test-Path (Join-Path $InstallDir 'wordcraft.exe'))) 'App executable remains after uninstall'
+  Assert-That (-not (Test-Path (Join-Path $InstallDir 'wordlogic.exe'))) 'App executable remains after uninstall'
   Assert-That (-not (Test-Path (Join-Path $InstallDir 'wordcraft-cli.exe'))) 'CLI executable remains after uninstall'
   Assert-That (-not (Test-Path $DesktopLink)) 'Desktop shortcut remains after uninstall'
   Assert-That (-not (Test-Path $StartLink)) 'Start Menu shortcut remains after uninstall'
@@ -164,7 +164,7 @@ function Uninstall-AsSystem($Package) {
 $source = Join-Path $WorkDir 'Stub.cs'
 'public static class Program { public static void Main() { } }' | Set-Content -Path $source -Encoding utf8
 $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
-foreach ($fixture in @(@('wordcraft.exe', 'winexe'), @('wordcraft-cli.exe', 'exe'))) {
+foreach ($fixture in @(@('wordlogic.exe', 'winexe'), @('wordcraft-cli.exe', 'exe'))) {
   & $csc /nologo /platform:x64 "/target:$($fixture[1])" "/out:$(Join-Path $Bin $fixture[0])" $source
   if ($LASTEXITCODE -ne 0) { throw 'Could not compile installer fixture' }
 }

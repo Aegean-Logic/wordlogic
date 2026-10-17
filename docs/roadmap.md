@@ -68,7 +68,7 @@ partial rows are fidelity gaps (beta work), not broken workflows. WordLogic stay
 ## Next after beta
 
 Charts and SmartArt editing, the Draw tab, `.doc` writing, PDF Reflow, the remaining interface
-languages, screen-reader access, ecosystem decisions (VBA, add-ins, cloud), an in-app assistant.
+languages, screen-reader access, ecosystem decisions (VBA, add-ins; cloud beyond Nextcloud, which the fork has with real-time co-authoring), an in-app assistant.
 
 ## Revision history
 

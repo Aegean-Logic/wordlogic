@@ -20,6 +20,11 @@ const SELECTION_ALPHA: u8 = 56;
 const TAG_TEXT: f32 = 10.0;
 const TAG_PAD: f32 = 3.0;
 const TAG_CHARS: usize = 24;
+/// How long a person's name shows on their caret after they move or type (milliseconds).
+const TAG_SHOW_MS: f64 = 3000.0;
+/// The flag a caret carries the rest of the time, and how near the pointer shows the name.
+const FLAG: f32 = 5.0;
+const HOVER: f32 = 6.0;
 
 /// The others' positions with their names and colours, where this copy can show them (a
 /// position in a part this copy doesn't have yet isn't drawn).
@@ -57,9 +62,14 @@ pub(crate) fn paint_selections(app: &WordApp, painter: &egui::Painter, layout: &
     }
 }
 
-/// The others' carets, each with a tag carrying the person's name (after this person's own).
+/// The others' carets (after this person's own). Each carries its person's name for a few seconds
+/// after they move or type, and while the pointer is over it; otherwise a small flag in their
+/// colour, so names don't sit over the text.
 pub(crate) fn paint_carets(app: &WordApp, painter: &egui::Painter, layout: &DocLayout, rects: &[Rect], scale: f32) {
     let clip = painter.clip_rect();
+    let now = crate::now_ms();
+    let hover = painter.ctx().pointer_hover_pos();
+    let mut fade_in: Option<f64> = None;
     for (p, _, focus) in others(app) {
         let Some(c) = layout.caret_on(&focus, app.session.page_hint) else { continue };
         let Some(pr) = rects.get(c.page) else { continue };
@@ -77,7 +87,22 @@ pub(crate) fn paint_carets(app: &WordApp, painter: &egui::Painter, layout: &DocL
             [pos2(x, y0), pos2(x, y1)]
         };
         painter.line_segment(bar, Stroke::new(2.0, p.color));
-        tag(painter, bar[0], &p.name, p.color);
+        let since = app.presence_moved.get(&p.client).map_or(f64::INFINITY, |(_, _, t)| now - t);
+        let hovered = hover.is_some_and(|h| Rect::from_min_max(pos2(x - HOVER, y0 - HOVER), pos2(x + HOVER, y1 + HOVER)).contains(h));
+        if hovered || (0.0..TAG_SHOW_MS).contains(&since) {
+            tag(painter, bar[0], &p.name, p.color);
+            if !hovered {
+                let left = TAG_SHOW_MS - since;
+                fade_in = Some(fade_in.map_or(left, |f| f.min(left)));
+            }
+        } else {
+            // Just a flag at the top of the caret.
+            painter.rect_filled(Rect::from_min_size(pos2(x - 1.0, bar[0].y - FLAG), vec2(FLAG, FLAG)), 0.0, p.color);
+        }
+    }
+    // Take the names down when their time is up.
+    if let Some(ms) = fade_in {
+        painter.ctx().request_repaint_after(std::time::Duration::from_millis(ms.clamp(0.0, TAG_SHOW_MS) as u64 + 50));
     }
 }
 
@@ -200,7 +225,26 @@ mod tests {
         out.textures_delta.clear();
         assert!(fills >= 1, "Ada's selection is highlighted");
         assert_eq!(bars, 2, "a caret each");
-        assert_eq!(names, ["Ada Lovelace", "Ben"]);
+        assert_eq!(names, ["Ada Lovelace", "Ben"], "names show while they've just moved");
+        // A while later, only a flag on each caret: names don't sit over the text.
+        for (_, _, t) in a.presence_moved.values_mut() {
+            *t -= TAG_SHOW_MS + 1.0;
+        }
+        let mut later = ctx.run_ui(egui::RawInput { screen_rect: Some(screen), ..Default::default() }, |ui| {
+            let painter = ui.painter().clone();
+            let rects: Vec<Rect> = layout.pages.iter().map(|p| Rect::from_min_size(Pos2::ZERO, vec2(p.w, p.h))).collect();
+            paint_carets(&a, &painter, &layout, &rects, 1.0);
+        });
+        let texts = later.shapes.iter().filter(|s| matches!(&s.shape, egui::Shape::Text(_))).count();
+        let flags =
+            later.shapes.iter().filter(|s| matches!(&s.shape, egui::Shape::Rect(r) if r.rect.width() == FLAG && r.rect.height() == FLAG)).count();
+        later.textures_delta.clear();
+        assert_eq!((texts, flags), (0, 2), "a flag each, no names");
+        // Reporting the same place again doesn't bring the name back; moving does.
+        let old = a.presence_moved.get(&2).map(|m| m.2);
+        a.set_presence(vec![(person(2, "Ada Lovelace"), Pos::body(0, 0), Pos::body(0, 5)), (person(3, "Ben"), Pos::body(1, 2), Pos::body(1, 2))]);
+        assert_eq!(a.presence_moved.get(&2).map(|m| m.2), old, "Ada stayed put");
+        assert!(a.presence_moved.get(&3).is_some_and(|m| crate::now_ms() - m.2 < TAG_SHOW_MS), "Ben moved");
         // No session: nobody.
         a.session.collab_stop();
         assert!(others(&a).is_empty());
