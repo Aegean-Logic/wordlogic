@@ -466,6 +466,10 @@ pub struct Session {
     edit_marks: Vec<Pos>,
     /// How many Go Back presses since the last edit (which place comes next).
     go_back_step: usize,
+    /// The shared document and this person's copy of it, while co-editing (`crate::collab`).
+    pub(crate) collab: Option<Box<crate::collab::Shared>>,
+    /// Commands running now: only the outermost one is shared as an edit.
+    pub(crate) collab_depth: u32,
 }
 
 /// The number of edit locations Go Back cycles through (Word: four).
@@ -650,6 +654,8 @@ impl Session {
             widened: None,
             edit_marks: Vec::new(),
             go_back_step: 0,
+            collab: None,
+            collab_depth: 0,
         }
     }
 
@@ -894,29 +900,60 @@ impl Session {
     pub fn close_typing(&mut self) {
         self.typing_open = false;
     }
+    // In a shared document Undo and Redo are this person's own edits (`collab`), not snapshots.
     pub fn can_undo(&self) -> bool {
-        !self.history.is_empty()
+        match &self.collab {
+            Some(c) => c.replica.can_undo(false),
+            None => !self.history.is_empty(),
+        }
     }
     pub fn can_redo(&self) -> bool {
-        !self.redo.is_empty()
+        match &self.collab {
+            Some(c) => c.replica.can_undo(true),
+            None => !self.redo.is_empty(),
+        }
     }
     pub fn undo_label(&self) -> Option<&str> {
-        self.history.last().map(|u| u.label.as_str())
+        match &self.collab {
+            Some(c) => c.replica.labels(false).first().copied(),
+            None => self.history.last().map(|u| u.label.as_str()),
+        }
     }
     pub fn redo_label(&self) -> Option<&str> {
-        self.redo.last().map(|u| u.label.as_str())
+        match &self.collab {
+            Some(c) => c.replica.labels(true).first().copied(),
+            None => self.redo.last().map(|u| u.label.as_str()),
+        }
     }
     /// The number of undo steps.
     pub fn undo_depth(&self) -> usize {
-        self.history.len()
+        match &self.collab {
+            Some(c) => c.replica.labels(false).len(),
+            None => self.history.len(),
+        }
     }
     pub fn undo_labels(&self) -> Vec<String> {
-        self.history.iter().rev().map(|u| u.label.clone()).collect()
+        self.undo_history_all().into_iter().map(str::to_string).collect()
     }
     /// The Undo button's list (#701): the undo steps' labels (English, as commands name them),
     /// newest first, at most [`UNDO_LIST_MAX`].
     pub fn undo_history(&self) -> Vec<&str> {
-        self.history.iter().rev().take(UNDO_LIST_MAX).map(|u| u.label.as_str()).collect()
+        self.undo_history_all().into_iter().take(UNDO_LIST_MAX).collect()
+    }
+    fn undo_history_all(&self) -> Vec<&str> {
+        match &self.collab {
+            Some(c) => c.replica.labels(false),
+            None => self.history.iter().rev().map(|u| u.label.as_str()).collect(),
+        }
+    }
+    /// The undo stack's size and the steps it has dropped at its limit: a mutating command that
+    /// leaves both as they were joined the previous step (typing on).
+    pub(crate) fn undo_counts(&self) -> (usize, u64) {
+        (self.history.len(), self.undo_evicted)
+    }
+    /// Shows a change that came from someone else: redrawn, but neither unsaved nor saved.
+    pub(crate) fn touch_quiet(&mut self) {
+        self.rev = self.rev.wrapping_add(1);
     }
     /// Undo the newest `count` steps in one go, as picking an entry in the Undo list does (#701).
     /// More than the undo depth undoes everything; a step that would take the document's
@@ -1100,6 +1137,10 @@ impl Session {
             column: _,
             column_mode: _,
             widened: _,
+            // Co-editing: what was shared is the others' too. A restore after shared commands is
+            // shared as the next edit, taking them back for everyone.
+            collab: _,
+            collab_depth: _,
             // Go Back's places, like the caret history: not part of the document.
             edit_marks: _,
             go_back_step: _,
@@ -1165,6 +1206,14 @@ impl Session {
     /// control channel). Mutating commands are undoable; a failed command leaves the document as
     /// it was; a panic inside a command becomes an error.
     pub fn run(&mut self, id: &str, params: &Value) -> Result<Value, CmdError> {
+        if self.collab.is_some() && self.collab_depth == 0 {
+            return crate::collab::run_shared(self, id, params);
+        }
+        self.run_inner(id, params)
+    }
+
+    /// [`Session::run`] itself (a shared document goes through `collab::run_shared` first).
+    pub(crate) fn run_inner(&mut self, id: &str, params: &Value) -> Result<Value, CmdError> {
         let join = std::mem::take(&mut self.join_next);
         let reg = self.registry.clone();
         let Some(spec) = reg.get(id) else { return Err(CmdError::Unknown(id.to_string())) };
