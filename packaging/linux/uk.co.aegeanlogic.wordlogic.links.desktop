@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=WordLogic
+Comment=Open documents from Nextcloud in WordLogic
+Exec=wordcraft %u
+TryExec=wordcraft
+Icon=uk.co.aegeanlogic.wordlogic
+Terminal=false
+NoDisplay=true
+MimeType=x-scheme-handler/wordlogic;

@@ -8,7 +8,10 @@
 //! `{"steps": n}` to run extra frames, or `{"wait": ms}` to keep running frames for a while (for
 //! background work such as a Zotero session). The window is 1440×900 pt at 2× and opens the sample
 //! document unless the first line is `{"empty": true}`; `{"empty": true, "startScreen": true}`
-//! starts the way the desktop app does with nothing to open (File › Home, #766).
+//! starts the way the desktop app does with nothing to open (File › Home, #766). `"fakeCloud": true`
+//! on the first line gives the window a scripted Nextcloud (signed in as ana, a few folders and
+//! documents) to look at the File view's Nextcloud places; `"fakeCloud": "signedOut"` starts signed
+//! out.
 
 use wordcraft_engine::Session;
 use wordcraft_ui_egui::{ControlRequest, Services, WordApp};
@@ -26,7 +29,8 @@ fn main() {
     } else {
         wordcraft_engine::sample::sample_document()
     };
-    let mut app = WordApp::new(Session::new(doc), Services::default()).with_control(rx);
+    let cloud = lines.first().and_then(|l| l.get("fakeCloud")).map(|v| fake_cloud(v.as_str() != Some("signedOut")));
+    let mut app = WordApp::new(Session::new(doc), Services { cloud, ..Services::default() }).with_control(rx);
     app.integrated_titlebar = true;
     if lines.first().is_some_and(|l| l.get("startScreen").is_some()) {
         app.start_screen();
@@ -94,5 +98,54 @@ fn step(harness: &mut egui_kittest::Harness<'_, WordApp>) {
 fn step_n(harness: &mut egui_kittest::Harness<'_, WordApp>, n: usize) {
     for _ in 0..n {
         step(harness);
+    }
+}
+
+/// A scripted Nextcloud for looking at the File view (`"fakeCloud"` on the first line).
+fn fake_cloud(signed_in: bool) -> wordcraft_ui_egui::cloud::Cloud {
+    use serde_json::json;
+    let inbox = wordcraft_ui_egui::cloud::CloudInbox::default();
+    let answers = inbox.clone();
+    let signed_in = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(signed_in));
+    wordcraft_ui_egui::cloud::Cloud {
+        request: Box::new(move |id, op, params| {
+            let on = signed_in.load(std::sync::atomic::Ordering::Relaxed);
+            let account = |on: bool| json!({"signedIn": on, "account": on.then_some("ana on cloud.example.com"), "server": on.then_some("https://cloud.example.com")});
+            let answer = match op {
+                "account.info" => Ok(account(on)),
+                "account.signIn" => {
+                    signed_in.store(true, std::sync::atomic::Ordering::Relaxed);
+                    Ok(account(true))
+                }
+                "account.signOut" => {
+                    signed_in.store(false, std::sync::atomic::Ordering::Relaxed);
+                    Ok(account(false))
+                }
+                "files.list" => {
+                    let path = params["path"].as_str().unwrap_or("").to_string();
+                    let items = if path.is_empty() {
+                        json!([
+                            {"name": "Documents", "path": "Documents", "folder": true},
+                            {"name": "Team", "path": "Team", "folder": true},
+                            {"name": "WordLogic", "path": "WordLogic", "folder": true},
+                            {"name": "Reading list.md", "path": "Reading list.md", "folder": false},
+                        ])
+                    } else {
+                        json!([
+                            {"name": "Drafts", "path": format!("{path}/Drafts"), "folder": true},
+                            {"name": "Annual report.docx", "path": format!("{path}/Annual report.docx"), "folder": false},
+                            {"name": "Board minutes.odt", "path": format!("{path}/Board minutes.odt"), "folder": false},
+                            {"name": "Letter to members.rtf", "path": format!("{path}/Letter to members.rtf"), "folder": false},
+                        ])
+                    };
+                    Ok(json!({"path": path, "items": items}))
+                }
+                other => Err(format!("The scripted Nextcloud doesn't do {other}.")),
+            };
+            answers.lock().unwrap_or_else(|e| e.into_inner()).push((id, answer));
+        }),
+        inbox,
+        files: true,
+        location: None,
     }
 }

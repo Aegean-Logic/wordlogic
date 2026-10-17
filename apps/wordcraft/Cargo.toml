@@ -78,3 +78,22 @@ pollster = "0.4"
 arboard = { workspace = true, features = ["image-data"] }
 # The control server's random key.
 getrandom = "0.3"
+# Nextcloud (`nextcloud.rs`): HTTP with rustls, on worker threads, as GridLogic's desktop app.
+# The system's own certificate store, so company and self-signed CAs the system trusts work.
+ureq = { version = "3", features = ["platform-verifier"] }
+serde = { workspace = true }
+# Nextcloud folder listings (WebDAV PROPFIND answers).
+quick-xml = { workspace = true }
+
+# The Nextcloud app password, in the system's own keychain.
+[target.'cfg(target_os = "windows")'.dependencies.keyring]
+version = "3"
+features = ["windows-native"]
+
+[target.'cfg(target_os = "macos")'.dependencies.keyring]
+version = "3"
+features = ["apple-native"]
+
+[target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dependencies.keyring]
+version = "3"
+features = ["async-secret-service", "async-io", "crypto-rust"]
