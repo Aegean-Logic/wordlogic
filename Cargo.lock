@@ -5232,6 +5232,7 @@ dependencies = [
 name = "wordcraft-engine"
 version = "0.7.0"
 dependencies = [
+ "base64",
  "cfb",
  "encoding_rs",
  "getrandom 0.3.4",
