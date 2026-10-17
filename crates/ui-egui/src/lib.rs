@@ -74,6 +74,7 @@ pub mod read_aloud;
 pub mod ribbon;
 pub mod ruler_tabs;
 pub mod scroll;
+pub mod share;
 pub mod system_clipboard;
 pub mod table_mouse;
 pub mod table_pen;
@@ -179,6 +180,11 @@ pub struct Services {
     /// `xdg-mime`. `None` (web, macOS) hides the button; macOS shows how to do it in Finder
     /// instead. An error means nothing changed.
     pub make_default_app: Option<Box<dyn Fn() -> Result<DefaultApp, String>>>,
+    /// The cloud the document can be shared through (Nextcloud): Share opens the Share dialog
+    /// ([`share`]) instead of exporting a copy.
+    pub cloud: Option<share::Cloud>,
+    /// Web: "Open in Desktop App": the page opens the document in WordLogic on this computer.
+    pub open_in_desktop: Option<Box<dyn Fn()>>,
 }
 
 /// How Save in the Save Changes prompt went.
@@ -441,6 +447,8 @@ pub struct WordApp {
     pub dialog: Option<dialogs::Dialog>,
     /// The Colors dialog (More Colors…), shown above any other dialog (#606).
     pub colors: Option<colors::ColorsDialog>,
+    /// The Share dialog, when open ([`share`]).
+    pub share: Option<share::ShareDialog>,
     /// The others in a shared document (set by the host with [`WordApp::set_presence`]): drawn
     /// in the document and in the title bar.
     pub presence: Vec<Presence>,
@@ -595,6 +603,7 @@ impl WordApp {
             controls: Default::default(),
             dialog: None,
             colors: None,
+            share: None,
             presence: Vec::new(),
             restrict: Default::default(),
             status_msg: None,
@@ -1508,6 +1517,13 @@ impl WordApp {
                         .into(),
                 ));
             }
+            "ui.share" => {
+                if self.services.cloud.is_none() {
+                    return Some(Err("Sharing needs a Nextcloud connection (WordLogic for Nextcloud).".into()));
+                }
+                self.share = share::ShareDialog::open(self);
+                json!({"open": self.share.is_some()})
+            }
             "ui.discord" => {
                 self.canvas.open_url = Some("https://www.aegeanlogic.co.uk".into());
                 json!({})
@@ -2050,6 +2066,7 @@ impl WordApp {
         }
         content_controls::popup(self, &ctx);
         dialogs::show(self, &ctx);
+        share::show(self, &ctx);
         #[cfg(not(target_arch = "wasm32"))]
         file_browser::show(self, &ctx);
         colors::show(self, &ctx);

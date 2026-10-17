@@ -94,7 +94,8 @@ Messages are plain objects passed with `postMessage`, each with a `type`:
 | `wordcraft:dirty` | to the page | `dirty`: whether there are unsaved changes (with `&ack=1`, including a save the page hasn't confirmed) |
 | `wordcraft:failed` | to the page | `error`: the app couldn't start |
 
-Other query flags: `&author=Name` names the user for new comments and tracked changes.
+Other query flags: `&author=Name` names the user for new comments and tracked changes;
+`&desktop=1` offers Open in Desktop App (below).
 
 **Opening.** `name` is the file's name; only its last path component is used. It must end in an
 extension WordLogic opens as a document (`.docx`, `.docm`, `.dotx`, `.dotm`, `.doc`, `.dot`,
@@ -147,6 +148,29 @@ While sharing, Undo and Redo work on this person's own edits only, and never tak
 change of someone else's. While sharing, a Save of the opened file (`wordcraft:save` under its
 name) is the page's to turn into a checkpoint. WordLogic handles co-editing messages as they
 arrive, even in a hidden tab, which draws no frames.
+
+### Sharing
+
+The Share button opens WordLogic's Share dialog: add people, groups or email addresses with Can
+edit or Can view, write a message, Send, Copy link (with the link's permission in plain sight and
+link settings) and manage who has access. Someone who opened a shared link sees Copy link for that
+link instead. WordLogic draws the dialog. The page does the talking to the file's server (for
+Nextcloud, its sharing API; `wordcraft-nextcloud/src/share.js`). The operations are those of
+`wordcraft_ui_egui::share::Cloud`: `share.info`, `share.search`, `share.list`, `share.add`,
+`share.update`, `share.remove` and `share.link`. Right-clicking Share exports a copy, as Share
+does without a page.
+
+| Message | Direction | Fields |
+|---|---|---|
+| `wordcraft:cloud` | to the page | `id`, `op` (an operation above), `params` (JSON text). |
+| `wordcraft:cloud:reply` | from the page | `id`, `ok`, then `json` (the answer as JSON text, at most 4 MB) when `ok`, otherwise `error` (a sentence for the user). |
+
+### Open in Desktop App
+
+With `desktop=1` in the page's URL, the ribbon offers Open in Desktop App beside Share (an icon in
+a narrow window). When it's chosen, WordLogic sends `wordcraft:openDesktop` (to the page). The
+page opens the file in WordLogic on the computer with a
+`wordlogic://open?server=<Nextcloud address>&path=<file>` link.
 
 ## Renderer selection and fallback flags
 

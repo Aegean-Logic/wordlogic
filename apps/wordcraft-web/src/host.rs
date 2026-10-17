@@ -50,6 +50,18 @@
 //! Co-editing messages are handled as they arrive, not at the next frame, so a hidden tab (which
 //! draws none) keeps up with the others and answers checkpoint requests ([`Bridge::attach`]).
 //!
+//! Sharing (the Share dialog's cloud is the page, which has the user's Nextcloud session):
+//!
+//! - `wordcraft:cloud` (to the parent): `{ id, op, params }`, an operation of
+//!   `wordcraft_ui_egui::share::Cloud` (`params` as JSON text).
+//! - `wordcraft:cloud:reply` (from the parent): `{ id, ok, json?, error? }`, its answer (`json`
+//!   as JSON text when `ok`, else `error`).
+//!
+//! Desktop (with `desktop=1` in the page's URL):
+//!
+//! - `wordcraft:openDesktop` (to the parent): Open in Desktop App was chosen; the page opens the
+//!   document in WordLogic on this computer (a `wordlogic://open` link).
+//!
 //! Only the parent window on the page's own origin is heard or answered. In host mode the page
 //! starts on a blank document instead of the Start screen or a sample, and the parent guards
 //! leaving the page.
@@ -65,6 +77,7 @@ use wasm_bindgen::JsCast as _;
 use wasm_bindgen::JsValue;
 use wasm_bindgen::closure::Closure;
 use wordcraft_ui_egui::async_saves::AsyncSaves;
+use wordcraft_ui_egui::share::{Cloud, CloudInbox};
 use wordcraft_ui_egui::{Inbox, Presence, Services, WordApp};
 
 use crate::acks::{self, Reply, SaveAcks};
@@ -88,6 +101,10 @@ const MAX_JSON_UNITS: u32 = collab_msg::MAX_JSON_BYTES as u32;
 const MAX_SHORT_UNITS: u32 = 1024;
 /// The most co-editing messages held for the app; past this the page has to rejoin.
 const MAX_COLLAB_QUEUE: usize = 4096;
+/// The largest answer to a sharing request taken from the page (JSON text).
+const MAX_CLOUD_REPLY_UNITS: u32 = 4 << 20;
+/// The most sharing answers held between two frames.
+const MAX_CLOUD_REPLIES: usize = 256;
 
 /// A message from the page, checked.
 enum FromPage {
@@ -97,6 +114,8 @@ enum FromPage {
     Reply(Reply),
     /// `wordcraft:collab:*`.
     Collab(collab_msg::FromPage),
+    /// `wordcraft:cloud:reply`: the answer to the Share dialog's request `id`.
+    CloudReply { id: u64, answer: Result<serde_json::Value, String> },
 }
 
 #[derive(Clone)]
@@ -121,6 +140,8 @@ pub struct Bridge {
     /// The app, for handling co-editing messages as they arrive ([`Bridge::attach`]), and the
     /// files the page sent that it hasn't opened yet.
     app: Rc<RefCell<Option<(Weak<RefCell<WordApp>>, Inbox)>>>,
+    /// The page's answers to the Share dialog's requests.
+    cloud: CloudInbox,
     /// Asks for another frame when co-editing changes what's shown.
     ctx: Rc<RefCell<Option<egui::Context>>>,
 }
@@ -147,17 +168,41 @@ impl Bridge {
             collab: Rc::default(),
             position: Rc::default(),
             app: Rc::default(),
+            cloud: CloudInbox::default(),
             ctx: Rc::default(),
         })
     }
 
     /// Send saved and exported files to the parent instead of downloading them, and hear files
-    /// from it.
+    /// from it. The page is also the Share dialog's cloud: it has the user's Nextcloud session.
     pub fn connect(&self, services: &mut Services, inbox: Inbox, ctx: egui::Context) {
         *self.ctx.borrow_mut() = Some(ctx.clone());
         self.listen(inbox, ctx);
         let bridge = self.clone();
         services.download = Some(Box::new(move |name: &str, bytes: &[u8]| bridge.post_save(name, bytes)));
+        let bridge = self.clone();
+        services.cloud = Some(Cloud::sharing(
+            Box::new(move |id, op, params| {
+                let params = params.to_string();
+                // Ids stay far below 2^53, so a JavaScript number holds them exactly.
+                bridge.send(&[
+                    ("type", "wordcraft:cloud".into()),
+                    ("id", JsValue::from_f64(id as f64)),
+                    ("op", op.into()),
+                    ("params", params.as_str().into()),
+                ]);
+            }),
+            self.cloud.clone(),
+        ));
+    }
+
+    /// `desktop=1`: the page can open the document in the desktop app
+    /// (`wordcraft:openDesktop`, to the page): the ribbon offers Open in Desktop App.
+    pub fn offer_desktop(&self, services: &mut Services) {
+        let bridge = self.clone();
+        services.open_in_desktop = Some(Box::new(move || {
+            bridge.send(&[("type", "wordcraft:openDesktop".into())]);
+        }));
     }
 
     /// Handle co-editing messages as they arrive rather than at the next frame, so a hidden tab
@@ -443,6 +488,20 @@ impl Bridge {
                 Reply::parse(&kind, number(data, "id"), string(data, "name", MAX_NAME_UNITS), string(data, "error", MAX_ERROR_UNITS))
                     .map(FromPage::Reply)
             }
+            "wordcraft:cloud:reply" => {
+                let id = number(data, "id").filter(|v| v.is_finite() && *v >= 0.0 && v.fract() == 0.0 && *v <= 9_007_199_254_740_991.0)?;
+                let ok = js_sys::Reflect::get(data, &JsValue::from_str("ok")).ok().and_then(|v| v.as_bool()).unwrap_or(false);
+                let answer = if ok {
+                    match string(data, "json", MAX_CLOUD_REPLY_UNITS) {
+                        Some(text) => serde_json::from_str(&text).map_err(|e| e.to_string()),
+                        None if present(data, "json") => Err("the answer was too large".to_string()),
+                        None => Ok(serde_json::Value::Null),
+                    }
+                } else {
+                    Err(string(data, "error", MAX_ERROR_UNITS).unwrap_or_else(|| "Nextcloud didn't answer".into()).chars().take(500).collect())
+                };
+                Some(FromPage::CloudReply { id: id as u64, answer })
+            }
             _ if kind.starts_with("wordcraft:collab:") => {
                 let flag = |key: &str| js_sys::Reflect::get(data, &JsValue::from_str(key)).ok().and_then(|v| v.as_bool());
                 let fields = Fields {
@@ -486,6 +545,12 @@ impl Bridge {
                 let mut replies = self.replies.borrow_mut();
                 if replies.len() < MAX_REPLIES {
                     replies.push(reply);
+                }
+            }
+            FromPage::CloudReply { id, answer } => {
+                let mut answers = self.cloud.lock().unwrap_or_else(|e| e.into_inner());
+                if answers.len() < MAX_CLOUD_REPLIES {
+                    answers.push((id, answer));
                 }
             }
             FromPage::Collab(msg) => {

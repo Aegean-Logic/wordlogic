@@ -1,6 +1,7 @@
 # Real-time co-editing: design
 
-Status: engine (phase 1), browser transport (phase 2) and presence (phase 3) done, 2026-10-17. Fork-specific (WordLogic, Aegean Logic). Not upstream
+Status: engine (phase 1), browser transport (phase 2), presence (phase 3) and the Share dialog
+done, 2026-10-17. Fork-specific (WordLogic, Aegean Logic). Not upstream
 behaviour. Sibling of GridLogic's `docs/co-editing.md`: same server, same log protocol, a
 different merge for text.
 
@@ -128,5 +129,5 @@ back with a message. Opening another document in the same window ends sharing.
 |---|---|
 | 2. Transport (done) | The web bridge (`apps/wordcraft-web/src/host.rs`, checked by `collab_msg.rs`): `wordcraft:collab:*` as in `packaging/web/README.md` § Co-editing and `../wordcraft-nextcloud` README § Protocol. Joining from a checkpoint's snapshot (`collab:start`'s `state`); checkpoints in the opened file's format with their snapshot; hidden tabs keep up (messages handled as they arrive) |
 | 3. Presence (done) | Others' carets (a bar in their colour with a name tag) and selections (a highlight in their colour) in the document (`crates/ui-egui/src/presence.rs`), kept with the text between reports; their initials in the title bar |
-| 4. Sharing and desktop | Share dialog through Nextcloud; Nextcloud in the desktop app's File view; Open in Desktop App (`wordlogic://`) |
+| 4. Sharing and desktop | Done in the browser: the Share dialog (`crates/ui-egui/src/share.rs`, GridLogic's) through the page, and Open in Desktop App (`desktop=1`, `wordcraft:openDesktop`). Next: Nextcloud in the desktop app's File view, the `wordlogic://` scheme and desktop co-editing |
 | 5. Hardening | Cell-by-cell table merging; large-op caps tuned; performance on very long documents |

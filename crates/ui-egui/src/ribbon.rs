@@ -239,10 +239,41 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                         t.on_accent,
                     );
                     ui.painter().text(pos2(r.min.x + 26.0, r.center().y), Align2::LEFT_CENTER, share, medium(12.0), t.on_accent);
-                    if resp.on_hover_text(tl!("Export a copy to share (PDF, Word document)")).clicked() {
+                    // With a cloud (WordLogic for Nextcloud), Share shares with people or by link,
+                    // as Word's does through OneDrive; exporting a copy stays on its right-click menu.
+                    if app.services.cloud.is_some() {
+                        let resp = resp.on_hover_text(tl!("Share with people or by link (right-click: export a copy)"));
+                        resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tl!("Share")));
+                        if resp.clicked() {
+                            let _ = app.run("ui.share", json!({}));
+                        }
+                        resp.context_menu(|ui| {
+                            if ui.button(tl!("Export a copy…")).clicked() {
+                                let _ = app.run("ui.backstage", json!({"value": true, "page": "export"}));
+                                ui.close();
+                            }
+                        });
+                    } else if resp.on_hover_text(tl!("Export a copy to share (PDF, Word document)")).clicked() {
                         let _ = app.run("ui.backstage", json!({"value": true, "page": "export"}));
                     }
                     ui.add_space(6.0);
+                    // In the browser: carry on in WordLogic on this computer, as Word for the web's
+                    // Open in Desktop App does (together with everyone still editing here). A
+                    // narrow window gets the icon alone.
+                    if app.services.open_in_desktop.is_some() {
+                        let hint = tl!("Open in Desktop App: edit this document in WordLogic on this computer");
+                        let clicked = if ui.available_width() > 900.0 {
+                            crate::widgets::icon_text_button(ui, "open", tl!("Open in Desktop App"), regular(12.0)).on_hover_text(hint).clicked()
+                        } else {
+                            let r = crate::widgets::icon_button(ui, "open", hint);
+                            r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tl!("Open in Desktop App")));
+                            r.clicked()
+                        };
+                        if clicked && let Some(open) = &app.services.open_in_desktop {
+                            open();
+                        }
+                        ui.add_space(4.0);
+                    }
                     let track = app.session.doc.settings.track_changes;
                     let mode =
                         crate::widgets::icon_text_menu_button(ui, "pencil", if track { tl!("Reviewing") } else { tl!("Editing") }, regular(12.0));
