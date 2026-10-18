@@ -17,7 +17,7 @@ use std::time::Duration;
 use serde::Deserialize;
 use serde_json::{Value as Json, json};
 use wordcraft_doc::Pos;
-use wordcraft_engine::collab::{Incoming, Op};
+use wordcraft_engine::collab::{Incoming, Op, PROTOCOL};
 use wordcraft_engine::doc::Document;
 use wordcraft_ui_egui::{Presence, WordApp};
 
@@ -32,6 +32,19 @@ const SAVE_CHECKPOINT_SECONDS: f64 = 10.0;
 const POLL: Duration = Duration::from_millis(600);
 /// How long quitting waits for the worker to leave the session.
 const LEAVE_WAIT: Duration = Duration::from_secs(2);
+
+/// Said when the session is on a newer WordLogic than this one, whose edits this one would
+/// misread: at joining, and when someone joins with one.
+pub(super) const OUTDATED: &str =
+    "Someone is editing this document with a newer WordLogic, so it opened here without editing together. Update WordLogic to edit it with them.";
+pub(super) const OUTDATED_NOW: &str =
+    "Someone joined with a newer WordLogic, so editing together stopped here. Update WordLogic to go on editing with them.";
+
+/// Whether the session's build (`join`'s `build`: the newest co-editing protocol in it) is newer
+/// than this one's.
+fn newer_than_mine(build: Option<&Json>) -> bool {
+    build.and_then(Json::as_str).and_then(|b| b.trim().parse::<u32>().ok()).is_some_and(|b| b > PROTOCOL)
+}
 
 /// Someone in the session, as the server lists them.
 #[derive(Clone, Debug, PartialEq, Deserialize)]
@@ -129,12 +142,17 @@ fn entries(v: Option<&Json>) -> Vec<Incoming> {
 /// version since (or replaced the snapshot); download again.
 pub(super) fn join(nc: &Connection, file_id: u64, etag: &str, remote: &str) -> Result<Option<Joined>, String> {
     let etag = etag.trim_start_matches("W/").trim_matches('"').to_string();
-    let r = nc.app("POST", "collab/join", &json!({"fileId": file_id, "etag": etag}))?;
+    // `build`: what this build's ops mean; the server sends anyone on an older one to reload.
+    let r = nc.app("POST", "collab/join", &json!({"fileId": file_id, "etag": etag, "build": PROTOCOL.to_string()}))?;
     if r.get("retry").and_then(Json::as_bool) == Some(true) {
         return Ok(None);
     }
     let num = |k: &str| r.get(k).and_then(Json::as_u64).ok_or_else(|| format!("Nextcloud's co-editing answer had no {k}."));
     let (session_id, client, seq) = (num("sessionId")?, num("client")?, num("seq")?);
+    if newer_than_mine(r.get("build")) {
+        let _ = nc.app("POST", "collab/leave", &json!({"sessionId": session_id, "client": client}));
+        return Err(OUTDATED.into());
+    }
     let state = if r.get("hasState").and_then(Json::as_bool) == Some(true) {
         let a = nc.app_raw("GET", &format!("collab/state?sessionId={session_id}&client={client}&seq={seq}"), &Json::Null)?;
         if a.status != 200 {
@@ -489,8 +507,8 @@ impl Worker {
                     link(&self.link).outbox.clear();
                     self.event(Event::Refused("You can view this document but not edit it: your changes aren't shared.".into()));
                 }
-                Ok((409, _)) => {
-                    self.event(Event::Rejoin);
+                Ok((409, body)) => {
+                    self.event(if outdated(&body) { Event::End(OUTDATED_NOW.into()) } else { Event::Rejoin });
                     return false;
                 }
                 Ok((400, body)) => {
@@ -546,8 +564,8 @@ impl Worker {
                 self.ctx.request_repaint();
                 Some(more)
             }
-            Ok((409, _)) => {
-                self.event(Event::Rejoin);
+            Ok((409, body)) => {
+                self.event(if outdated(&body) { Event::End(OUTDATED_NOW.into()) } else { Event::Rejoin });
                 None
             }
             _ => Some(false),
@@ -610,6 +628,11 @@ impl Worker {
         }
         true
     }
+}
+
+/// A 409 that says a newer WordLogic is in the session: rejoining wouldn't help.
+fn outdated(body: &Json) -> bool {
+    body.get("outdated").and_then(Json::as_bool) == Some(true)
 }
 
 /// The members other than `me` whose position reads, for [`WordApp::set_presence`].
