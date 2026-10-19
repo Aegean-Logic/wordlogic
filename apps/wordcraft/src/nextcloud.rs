@@ -1002,6 +1002,9 @@ fn download_and_join(state: &Mutex<State>, remote: &str, rejoin: bool) -> Result
             Ok(None) => std::thread::sleep(Duration::from_millis(400u64 << attempt)),
             Err(e) => {
                 log::warn!("co-editing {remote}: {e}");
+                if e == coedit::OUTDATED {
+                    lock(state).notices.push(("Opened without editing together".into(), e, true));
+                }
                 return Ok((local, None));
             }
         }

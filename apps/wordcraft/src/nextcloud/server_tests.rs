@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use serde_json::json;
 use wordcraft_engine::Session;
-use wordcraft_engine::collab::Incoming;
+use wordcraft_engine::collab::{Incoming, PROTOCOL};
 use wordcraft_engine::doc::{Document, StoryRef};
 use wordcraft_ui_egui::{Services, WordApp};
 
@@ -351,6 +351,55 @@ fn a_lost_session_is_rejoined_from_the_file() {
         app.session.collab_active() && body(app) == "Changed meanwhile"
     });
     assert_eq!(server.data().sessions.len(), 1, "joined again");
+    nc.shutdown(&mut app);
+}
+
+#[test]
+fn a_session_on_a_newer_wordlogic_opens_unshared_and_says_why() {
+    let path = "Newer.docx";
+    let server = Server::start();
+    server.data().put(path, docx("Edited elsewhere"));
+    let file_id = server.data().files[path].id;
+    let etag = server.data().files[path].etag.clone();
+    // Someone joined with a WordLogic whose edits this one would misread.
+    server.data().sessions.insert(
+        file_id,
+        super::fake_server::Session { file_id, checkpoint_etag: etag, next_client: 1, build: (PROTOCOL + 1).to_string(), ..Default::default() },
+    );
+    let (mut nc, _dir) = signed_in(&server, "newer");
+    let ctx = egui::Context::default();
+    let mut app = app(&nc);
+    wordcraft_ui_egui::cloud_files::open_remote(&mut app, path);
+    until(&mut nc, &mut app, &ctx, "the document, unshared", |app| body(app) == "Edited elsewhere" && app.cloud_files.notice.is_some());
+    assert!(!app.session.collab_active());
+    let (title, text) = app.cloud_files.notice.clone().unwrap();
+    assert_eq!((title.as_str(), text.as_str()), ("Opened without editing together", coedit::OUTDATED));
+    let mut data = server.data();
+    let s = data.session_of(path).unwrap();
+    assert_eq!(s.builds.iter().map(|b| b.1.as_str()).collect::<Vec<_>>(), [PROTOCOL.to_string()], "joined saying what its ops mean");
+    assert!(s.members.iter().all(|m| !m.4), "it left the session it couldn't follow");
+}
+
+#[test]
+fn someone_joining_with_a_newer_wordlogic_ends_sharing_without_rejoining() {
+    let path = "Outdated.docx";
+    let server = Server::start();
+    server.data().put(path, docx("Shared"));
+    let (mut nc, _dir) = signed_in(&server, "outdated");
+    let ctx = egui::Context::default();
+    let mut app = app(&nc);
+    wordcraft_ui_egui::cloud_files::open_remote(&mut app, path);
+    until(&mut nc, &mut app, &ctx, "the shared document", |app| app.session.collab_active());
+    // A newer WordLogic joins: the server answers this copy's next call `outdated`.
+    server.data().session_of(path).unwrap().build = (PROTOCOL + 1).to_string();
+    until(&mut nc, &mut app, &ctx, "sharing to end", |app| !app.session.collab_active() && app.cloud_files.notice.is_some());
+    let (title, text) = app.cloud_files.notice.clone().unwrap();
+    assert_eq!((title.as_str(), text.as_str()), ("Co-editing stopped", coedit::OUTDATED_NOW));
+    assert_eq!(body(&app), "Shared", "the document stays open");
+    std::thread::sleep(Duration::from_millis(300));
+    nc.poll(&mut app, &ctx);
+    let joins = server.data().requests.iter().filter(|(_, p)| p.contains("collab/join")).count();
+    assert_eq!(joins, 1, "rejoining couldn't help: it doesn't");
     nc.shutdown(&mut app);
 }
 

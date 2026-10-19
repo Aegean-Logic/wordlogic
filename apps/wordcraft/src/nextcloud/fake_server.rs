@@ -1,7 +1,8 @@
 //! A fake Nextcloud for tests, on a local port: WebDAV for one user's files (PROPFIND, GET, HEAD,
 //! PUT with ETags and `If-Match` / `If-None-Match`) and the WordLogic app's co-editing sequencer
 //! (`/index.php/apps/wordcraft/collab/*`, as `wordcraft-nextcloud`'s `CollabService` answers:
-//! join pinned to an ETag, state snapshots, push, sync, checkpoint, leave). Plain HTTP/1.1 with
+//! join pinned to an ETag, state snapshots, push, sync, checkpoint, leave, and the session kept to
+//! its newest co-editing protocol). Plain HTTP/1.1 with
 //! keep-alive, one thread per connection.
 
 use std::collections::HashMap;
@@ -37,6 +38,19 @@ pub struct Session {
     pub members: Vec<(u64, String, String, bool, bool)>,
     /// Checkpoints recorded: (client, seq, etag, state).
     pub checkpoints: Vec<(u64, u64, String, String)>,
+    /// What each join said its build was (`build`), by client.
+    pub builds: Vec<(u64, String)>,
+    /// The newest build that joined (`join` answers it), as the server keeps it: a member on an
+    /// older one is answered 409 `{rejoin, outdated}`.
+    pub build: String,
+}
+
+impl Session {
+    /// Whether `client` joined with an older build than the session's newest.
+    fn outdated(&self, client: u64) -> bool {
+        let mine = self.builds.iter().find(|b| b.0 == client).and_then(|b| b.1.parse::<u32>().ok());
+        mine < self.build.parse::<u32>().ok()
+    }
 }
 
 #[derive(Default)]
@@ -305,14 +319,18 @@ fn collab(d: &mut Data, route: &str, p: &HashMap<String, Json>) -> Answer {
                 s.checkpoint_etag = etag;
                 s.snapshot = None;
             }
+            if text("build").parse::<u32>().ok() > s.build.parse::<u32>().ok() {
+                s.build = text("build");
+            }
             s.next_client += 1;
             let client = s.next_client;
+            s.builds.push((client, text("build")));
             s.members.push((client, "Desktop".into(), String::new(), true, true));
             let seq = s.checkpoint_seq;
             let has_state = seq > 0 && s.snapshot.as_ref().is_some_and(|(at, _)| *at == seq);
             json_answer(
                 200,
-                json!({"sessionId": file_id, "client": client, "seq": seq, "hasState": has_state, "entries": entries(s, seq), "members": members(s), "canEdit": true}),
+                json!({"sessionId": file_id, "client": client, "seq": seq, "hasState": has_state, "entries": entries(s, seq), "members": members(s), "canEdit": true, "build": s.build}),
             )
         }
         "state" => {
@@ -325,6 +343,9 @@ fn collab(d: &mut Data, route: &str, p: &HashMap<String, Json>) -> Answer {
         "push" => {
             let Some(s) = d.sessions.get_mut(&num("sessionId")) else { return json_answer(409, json!({"rejoin": true})) };
             let (client, cs) = (num("client"), num("clientSeq"));
+            if s.outdated(client) {
+                return json_answer(409, json!({"rejoin": true, "outdated": true}));
+            }
             if let Some(e) = s.log.iter().find(|e| e.1 == client && e.2 == cs) {
                 return json_answer(200, json!({"seq": e.0}));
             }
@@ -335,6 +356,9 @@ fn collab(d: &mut Data, route: &str, p: &HashMap<String, Json>) -> Answer {
         "sync" => {
             let Some(s) = d.sessions.get_mut(&num("sessionId")) else { return json_answer(409, json!({"rejoin": true})) };
             let (client, sel) = (num("client"), text("sel"));
+            if s.outdated(client) {
+                return json_answer(409, json!({"rejoin": true, "outdated": true}));
+            }
             if let Some(m) = s.members.iter_mut().find(|m| m.0 == client)
                 && !sel.is_empty()
             {

@@ -22,6 +22,12 @@ pub use replica::{Incoming, Outgoing, Replica, Shown};
 pub use shared::Other;
 pub(crate) use shared::{Shared, run_shared};
 
+/// What this build's ops mean, for hosts to keep a session to one meaning: a copy that reads ops
+/// differently from the others (it ignores a part they send) drifts from them unseen, and can save
+/// its copy over their work. Raise it whenever an op carries something an older build would
+/// misread or drop. 1: stories as deltas with cell-by-cell tables, parts, and changed fields.
+pub const PROTOCOL: u32 = 1;
+
 use std::collections::BTreeMap;
 
 use base64::Engine as _;

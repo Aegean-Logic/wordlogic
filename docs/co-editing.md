@@ -1,7 +1,8 @@
 # Real-time co-editing: design
 
 Status: engine (phase 1), browser transport (phase 2), presence (phase 3), the Share dialog and
-the desktop app joining sessions done, 2026-10-17. Fork-specific (WordLogic, Aegean Logic). Not upstream
+the desktop app joining sessions done, 2026-10-17; sessions keep to one co-editing protocol,
+2026-10-18. Fork-specific (WordLogic, Aegean Logic). Not upstream
 behaviour. Sibling of GridLogic's `docs/co-editing.md`: same server, same log protocol, a
 different merge for text.
 
@@ -85,6 +86,14 @@ Nextcloud sequencer is shared code):
 - The caret and selection stay where they were through others' edits (`Delta::map_pos`); text
   someone types at your caret goes after it.
 - A copy missing log history must rejoin rather than guess.
+- **A session keeps to one co-editing protocol** (`collab::PROTOCOL`, raised whenever an op
+  carries something an older build would misread or drop). Every copy joins with it (the browser's
+  from `wordcraft:ready`'s `collab`), never with the app version, which the desktop app doesn't
+  share. The Nextcloud app keeps the newest per session and answers a member on an older one
+  `{rejoin, outdated}` (wordcraft-nextcloud 0.8.0): a browser tab reloads, which brings the newer
+  editor, and a copy that can't get newer that way says so instead of rejoining in a loop. Without
+  this a tab left open across an upgrade misreads newer ops and can write a checkpoint that loses
+  the others' edits (seen in SlideLogic).
 
 **Proof:** `collab::tests::copies_converge_whatever_the_timing`: random 3-person sessions (typing,
 Enter, Backspace/Delete across paragraphs, bold/italic/colour, alignment, bullets, numbering,
@@ -177,6 +186,9 @@ window:
   send the local copy; its record follows the session's saves, so reopening it later fetches
   Nextcloud's version. A copy that can't follow the log (409, a refused op) reopens the current
   file and rejoins. Opening another document in the window, or quitting, leaves the session.
+  It joins with `collab::PROTOCOL`: a session on a newer one opens the document unshared with a
+  message, and a 409 that says `outdated` (someone joined with a newer WordLogic) ends sharing
+  with a message rather than rejoin.
 - **Open in Desktop App.** The browser's `wordlogic://open?server=…&path=…` link (the editor's
   title bar with `desktop=1`, and the Files action) starts WordLogic with the link. The desktop
   opens the file from that server, after signing in there if needed (File › Account comes up with
@@ -186,6 +198,6 @@ window:
 - **Tested** against a fake Nextcloud on a local port (`nextcloud/fake_server.rs`, WebDAV plus
   the sequencer): opening, saving back, conflicts, joining from a snapshot with an engine session
   standing in for the browser, edits both ways, presence, checkpoints with snapshots, rejoining,
-  leaving, links. The File view is tested with a fake cloud (`crates/ui-egui/tests/cloud_files.rs`).
+  leaving, links, and a session on a newer protocol (at joining and mid-session). The File view is tested with a fake cloud (`crates/ui-egui/tests/cloud_files.rs`).
 - **Not yet:** others' carets on the desktop's page and the Share dialog come with the web
   branch's presence painting and `share.rs`; until then the status bar says who joined or left.

@@ -86,7 +86,7 @@ Messages are plain objects passed with `postMessage`, each with a `type`:
 
 | Message | Direction | Fields |
 |---|---|---|
-| `wordcraft:ready` | to the page | `version`; `ack` (true with `&ack=1`); `collab` (true: this build can co-edit). Send the file to open after this. |
+| `wordcraft:ready` | to the page | `version`; `ack` (true with `&ack=1`); `collab` (this build can co-edit: its co-editing protocol, `collab::PROTOCOL`, a number to join a session with; earlier builds said `true`). Send the file to open after this. |
 | `wordcraft:open` | from the page | `name`, `bytes` (`ArrayBuffer` or `Uint8Array`, up to 200 MB) |
 | `wordcraft:save` | to the page | `name`, `bytes` (a transferred `ArrayBuffer`); `id` with `&ack=1`. Sent for Save, Save As, and Export as PDF or picture. |
 | `wordcraft:saved` | from the page (`&ack=1`) | `id`; optional `name` when the page stored the file under another name |
