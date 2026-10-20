@@ -419,33 +419,38 @@ fn reply_key(id: u32) -> egui::Id {
 
 /// A comment's text, editable in place (the Comments pane and the balloons). Typing stays in a
 /// draft until the field loses focus; then [`commit_comment`] writes it back with one
-/// `review.editComment`, so each editing session is one undo step.
+/// `review.editComment`, so each editing session is one undo step. `@` offers people to mention
+/// ([`crate::mentions`]).
 pub(crate) fn comment_editor(app: &mut WordApp, ui: &mut Ui, id: u32, font: Option<egui::FontId>, focus: bool) {
     let Some(part) = app.session.doc.comments.get(&id).map(|c| c.part) else { return };
     let key = edit_key(id);
-    let mut text = ui.data(|d| d.get_temp::<String>(key)).unwrap_or_else(|| app.session.doc.plain_text(StoryRef::Part(part)));
-    let mut edit = egui::TextEdit::multiline(&mut text).desired_rows(1).desired_width(f32::INFINITY).hint_text(tl!("Add a comment"));
-    if let Some(f) = font {
-        edit = edit.font(f);
-    }
-    let r = ui.add(edit);
+    let mut draft = ui.data(|d| d.get_temp::<crate::mentions::Draft>(key)).unwrap_or_else(|| {
+        let doc = &app.session.doc;
+        crate::mentions::Draft::new(&doc.plain_text(StoryRef::Part(part)), &wordcraft_engine::cmd::mention::found(doc, part))
+    });
+    let before = draft.text.clone();
+    let box_id = key.with("box");
+    let r = crate::mentions::editor(app, ui, box_id, &mut draft, font, tl!("Add a comment (@ to mention)"));
     if focus {
         r.request_focus();
     }
-    if r.changed() {
-        ui.data_mut(|d| d.insert_temp(key, text));
+    if draft.text != before || r.has_focus() {
+        ui.data_mut(|d| d.insert_temp(key, draft));
     }
-    if r.lost_focus() {
+    if r.lost_focus() && !app.mentions.picking(box_id) {
         commit_comment(app, ui.ctx(), id);
     }
 }
 
-/// Write a comment's draft text back, when it has one that differs from the comment.
+/// Write a comment's draft text back, when it has one that differs from the comment, and tell
+/// the people newly mentioned in it.
 pub(crate) fn commit_comment(app: &mut WordApp, ctx: &egui::Context, id: u32) {
-    let Some(text) = ctx.data_mut(|d| d.remove_temp::<String>(edit_key(id))) else { return };
+    let Some(draft) = ctx.data_mut(|d| d.remove_temp::<crate::mentions::Draft>(edit_key(id))) else { return };
     let Some(part) = app.session.doc.comments.get(&id).map(|c| c.part) else { return };
-    if text != app.session.doc.plain_text(StoryRef::Part(part)) {
-        let _ = app.run("review.editComment", json!({"id": id, "text": text}));
+    if draft.text != app.session.doc.plain_text(StoryRef::Part(part))
+        && let Ok(answer) = app.run("review.editComment", json!({"id": id, "text": draft.text, "mentions": draft.people()}))
+    {
+        crate::mentions::posted(app, &answer, &draft.text);
     }
 }
 
@@ -461,31 +466,30 @@ fn thread_root(app: &WordApp, id: u32) -> u32 {
 /// `review.reply`; returns true when the field is done (posted or left empty).
 pub(crate) fn reply_editor(app: &mut WordApp, ui: &mut Ui, id: u32, font: Option<egui::FontId>, focus: bool) -> bool {
     let key = reply_key(id);
-    let mut text = ui.data(|d| d.get_temp::<String>(key)).unwrap_or_default();
-    let mut edit = egui::TextEdit::multiline(&mut text).desired_rows(1).desired_width(f32::INFINITY).hint_text(tl!("Write a reply"));
-    if let Some(f) = font {
-        edit = edit.font(f);
-    }
-    let r = ui.add(edit);
+    let mut draft = ui.data(|d| d.get_temp::<crate::mentions::Draft>(key)).unwrap_or_default();
+    let box_id = key.with("box");
+    let r = crate::mentions::editor(app, ui, box_id, &mut draft, font, tl!("Write a reply (@ to mention)"));
     if focus {
         r.request_focus();
     }
-    if r.changed() {
-        ui.data_mut(|d| d.insert_temp(key, text));
-    }
-    if r.lost_focus() {
+    ui.data_mut(|d| d.insert_temp(key, draft));
+    if r.lost_focus() && !app.mentions.picking(box_id) {
         commit_reply(app, ui.ctx(), id);
         return true;
     }
     false
 }
 
-/// Post a pending reply draft to comment `id` (nothing when there is none or it is blank).
+/// Post a pending reply draft to comment `id` (nothing when there is none or it is blank), and
+/// tell the people mentioned in it.
 pub(crate) fn commit_reply(app: &mut WordApp, ctx: &egui::Context, id: u32) {
-    let Some(text) = ctx.data_mut(|d| d.remove_temp::<String>(reply_key(id))) else { return };
+    let Some(draft) = ctx.data_mut(|d| d.remove_temp::<crate::mentions::Draft>(reply_key(id))) else { return };
+    let text = draft.text.trim_end().to_string();
     if !text.trim().is_empty() {
         let root = thread_root(app, id);
-        let _ = app.run("review.reply", json!({"id": root, "text": text.trim_end()}));
+        if let Ok(answer) = app.run("review.reply", json!({"id": root, "text": text, "mentions": draft.people()})) {
+            crate::mentions::posted(app, &answer, &text);
+        }
     }
 }
 

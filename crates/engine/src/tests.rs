@@ -2786,8 +2786,9 @@ fn commands_after_the_largest_ids_take_free_ones() {
     s.doc.numbering.nums[0].id = u32::MAX;
     s.doc.numbering.nums[0].abstract_id = u32::MAX;
     let before = s.doc.clone();
-    assert_eq!(run(&mut s, "review.newComment", json!({"text": "new"})), json!({"id": 1, "story": 1}));
-    assert_eq!(run(&mut s, "review.reply", json!({"id": 0, "text": "re"})), json!({"id": 2}));
+    let r = run(&mut s, "review.newComment", json!({"text": "new"}));
+    assert_eq!((&r["id"], &r["story"]), (&json!(1), &json!(1)));
+    assert_eq!(run(&mut s, "review.reply", json!({"id": 0, "text": "re"}))["id"], 2);
     run(&mut s, "para.numbering", json!({}));
     assert_eq!(run(&mut s, "list.define", json!({"levels": []}))["num"], 2);
     assert_eq!(run(&mut s, "references.footnote", json!({"text": "note"}))["id"], 3);
@@ -7231,4 +7232,41 @@ fn vertical_align_command_sets_justified() {
         assert_eq!(va(&s), want, "{name}");
         assert_eq!(serde_json::to_value(crate::cmd::page::sect(&s)).unwrap()["valign"], json!(name));
     }
+}
+
+/// `@mentions` in comments: styled links Word reads as mentions, kept through .docx with the
+/// comment's durable id, and only newly mentioned people are reported to be told.
+#[test]
+fn comment_mentions_survive_docx_and_report_new_people() {
+    let mut s = s();
+    run(&mut s, "text.insert", json!({"text": "Budget figures"}));
+    run(&mut s, "select.text", json!({"text": "Budget"}));
+    let ann = json!({"name": "Ann Lee", "id": "ann", "link": "mailto:ann@example.com"});
+    let bo = json!({"name": "Bo", "id": "bo", "link": "https://cloud.example/u/bo"});
+    let r = s.run("review.newComment", &json!({"text": "@Ann Lee please check", "mentions": [ann]})).unwrap();
+    let id = r["id"].as_u64().unwrap();
+    let anchor = r["anchor"].as_str().unwrap().to_string();
+    assert_eq!(r["mentions"][0]["id"], "ann");
+    // Editing keeps Ann (not told again) and adds Bo (told).
+    let r = s.run("review.editComment", &json!({"id": id, "text": "@Ann Lee and @Bo please check", "mentions": [ann, bo]})).unwrap();
+    assert_eq!(r["mentions"].as_array().unwrap().len(), 1);
+    assert_eq!(r["mentions"][0]["id"], "bo");
+    assert_eq!(r["anchor"], anchor.as_str());
+    let r = s.run("review.reply", &json!({"id": id, "text": "Done @Ann Lee", "mentions": [ann]})).unwrap();
+    assert_eq!(r["anchor"], anchor.as_str(), "a reply's link opens its thread");
+    assert!(s.doc.styles.get("Mention").is_some());
+
+    let bytes = wordcraft_docx::write(&s.doc).unwrap();
+    let mut t = Session::new(wordcraft_docx::read(&bytes).unwrap());
+    let list = t.run("review.comments", &json!({})).unwrap();
+    let first = &list[0];
+    assert_eq!(first["text"], "@Ann Lee and @Bo please check");
+    assert_eq!(first["durableId"], anchor.as_str());
+    assert_eq!(first["mentions"].as_array().unwrap().len(), 2);
+    assert_eq!(first["mentions"][1]["link"], "https://cloud.example/u/bo");
+    // The mention's link opens the comment.
+    run(&mut t, "caret.set", json!({"pos": {"story": "body", "path": [0], "off": 14}}));
+    let r = t.run("review.goToComment", &json!({"anchor": anchor.to_lowercase()})).unwrap();
+    assert_eq!(r["focus"]["off"], 0);
+    assert!(t.run("review.goToComment", &json!({"anchor": "7FFFFFFE"})).is_err());
 }

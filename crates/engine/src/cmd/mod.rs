@@ -24,6 +24,7 @@ pub mod insert;
 pub mod inspector;
 pub mod lists;
 pub mod mailings;
+pub mod mention;
 pub mod moves;
 pub mod objects;
 pub mod options;

@@ -63,6 +63,7 @@ pub mod icons;
 pub mod ink;
 pub mod keys;
 pub mod keytips;
+pub mod mentions;
 pub mod mini_toolbar;
 pub mod objects;
 pub mod options;
@@ -451,6 +452,8 @@ pub struct WordApp {
     pub colors: Option<colors::ColorsDialog>,
     /// The Share dialog, when open ([`share`]).
     pub share: Option<share::ShareDialog>,
+    /// `@mentions` in comments: the people picker and the notifications under way.
+    pub mentions: mentions::Mentions,
     /// The others in a shared document (set by the host with [`WordApp::set_presence`]): drawn
     /// in the document and in the title bar.
     pub presence: Vec<Presence>,
@@ -614,6 +617,7 @@ impl WordApp {
             dialog: None,
             colors: None,
             share: None,
+            mentions: Default::default(),
             presence: Vec::new(),
             presence_moved: Default::default(),
             restrict: Default::default(),
@@ -2130,6 +2134,7 @@ impl WordApp {
         content_controls::popup(self, &ctx);
         dialogs::show(self, &ctx);
         share::show(self, &ctx);
+        mentions::show(self, &ctx);
         cloud_files::show(self, &ctx);
         #[cfg(not(target_arch = "wasm32"))]
         file_browser::show(self, &ctx);
