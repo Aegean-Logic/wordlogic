@@ -425,3 +425,59 @@ fn a_desktop_link_opens_the_document_once_signed_in_to_that_server() {
     assert_eq!(app.cloud_files.server, "other.example");
     assert!(server.data().requests.iter().all(|(_, p)| !p.contains("Doc.docx")), "nothing asked of the wrong server");
 }
+
+#[test]
+fn chat_opens_the_documents_talk_conversation_once_it_is_shared() {
+    let server = Server::start();
+    server.data().put("Docs/Report.docx", docx("Hello"));
+    let (mut nc, _dir) = signed_in(&server, "talk");
+    let mut app = app(&nc);
+    let ctx = egui::Context::default();
+    let doc = || Doc {
+        title: "Report".into(),
+        path: None,
+        id: 1,
+        remote: Some(Remote { path: "Docs/Report.docx".into(), etag: None, synced: None }),
+        encode: Box::new(|_| Err("not needed".into())),
+    };
+
+    // No Talk on the server: no chat.
+    nc.poll(&mut app, &ctx);
+    let start = Instant::now();
+    while lock(&nc.state).talk.is_none() {
+        assert!(start.elapsed() < Duration::from_secs(20), "timed out asking about Talk");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert!(!nc.cloud().has_talk());
+
+    // With Talk (asked again for another sign-in): chat is offered.
+    server.data().talk = true;
+    lock(&nc.state).talk = None;
+    nc.talk_asked_at = f64::NEG_INFINITY;
+    nc.poll(&mut app, &ctx);
+    let start = Instant::now();
+    while !nc.cloud().has_talk() {
+        assert!(start.elapsed() < Duration::from_secs(20), "timed out asking about Talk");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+
+    // Not shared with anyone: Talk has no conversation for it, and the user is told to share it.
+    let opened = Mutex::new(Vec::<String>::new());
+    let open = |url: &str| opened.lock().unwrap().push(url.to_string());
+    let e = run(&nc.state, "talk.open", &json!({}), Some(doc()), &open).unwrap_err();
+    assert!(e.contains("Share it with someone"), "{e}");
+    assert!(opened.lock().unwrap().is_empty());
+
+    // Shared: its conversation opens in the browser.
+    let id = server.data().files["Docs/Report.docx"].id;
+    server.data().talk_rooms.push(id);
+    let answer = run(&nc.state, "talk.open", &json!({}), Some(doc()), &open).unwrap();
+    let url = format!("{}/index.php/call/room{id}", server.url);
+    assert_eq!(answer, json!({"url": url}));
+    assert_eq!(*opened.lock().unwrap(), [url]);
+    assert!(server.data().without_ocs_header.is_empty(), "OCS calls carry OCS-APIRequest");
+
+    // A document that isn't in Nextcloud has no chat.
+    let local = Doc { remote: None, ..doc() };
+    assert!(run(&nc.state, "talk.open", &json!({}), Some(local), &open).is_err());
+}

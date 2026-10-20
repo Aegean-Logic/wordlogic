@@ -475,6 +475,11 @@ pub fn paint(p: &Painter, r: Rect, name: &str, c: Color32, accent: Color32) {
             pen.line_c(&[(9.0, 12.0), (17.0, 17.0)], a);
             pen.line_c(&[(14.0, 17.5), (17.0, 17.0), (16.5, 14.0)], a);
         }
+        // Chat about the file (Nextcloud Talk): two speech bubbles.
+        "chat" => {
+            pen.line(&[(7.0, 5.5), (7.0, 2.5), (17.5, 2.5), (17.5, 10.0), (16.0, 10.0), (16.0, 13.0), (13.5, 10.0)]);
+            pen.closed(&[(2.5, 7.0), (13.5, 7.0), (13.5, 14.0), (8.0, 14.0), (4.5, 17.5), (4.5, 14.0), (2.5, 14.0)], c);
+        }
         "comment" | "newComment" => {
             pen.closed(&[(2.5, 3.5), (17.5, 3.5), (17.5, 13.5), (9.0, 13.5), (5.0, 17.0), (5.0, 13.5), (2.5, 13.5)], c);
             if name == "newComment" {
