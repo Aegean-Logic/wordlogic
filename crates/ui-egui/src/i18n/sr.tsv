@@ -28,6 +28,7 @@
 	Accessibility	Приступачност
 	Add	Додај
 	Add a comment	Додај коментар
+	Add a comment (@ to mention)	Додај коментар (@ за помињање)
 	Add a Table	Додај табелу
 	Add Object to Selection	Додај објекат у избор
 	Add Space Before Paragraph	Додај размак пре пасуса
@@ -481,6 +482,7 @@
 	General	Опште
 	Go To	Иди на
 	Go to	Иди на
+	Go to Comment	Иди на коментар
 	Go To (⌘⌥G)	Иди на (⌘⌥G)
 	Grab bag	Разно
 	Greeting Line	Ред поздрава
@@ -1026,6 +1028,7 @@
 	Wrap\nText	Преломи\nтекст
 	Write & Insert Fields	Писање и уметање поља
 	Write a reply	Напишите одговор
+	Write a reply (@ to mention)	Напишите одговор (@ за помињање)
 	Zoom	Зумирање
 	Zoom In	Увећај
 	Zoom Out	Умањи

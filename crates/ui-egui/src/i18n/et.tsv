@@ -22,6 +22,7 @@
 	Add Text	Lisa tekst
 	Add a Table	Lisa tabel
 	Add a comment	Lisa kommentaar
+	Add a comment (@ to mention)	Lisa kommentaar (@ mainimiseks)
 	Add to Dictionary	Lisa sõnastikku
 	Add to Style Gallery	Lisa stiilivalikusse
 	Address Block	Aadressiplokk
@@ -299,6 +300,7 @@
 	Go To (⌘⌥G)	Mine (⌘⌥G)
 	Go To…	Mine…
 	Go to	Mine
+	Go to Comment	Mine kommentaari juurde
 	Grab bag	Koondvaade
 	Greeting Line	Tervitusrida
 	Greeting\nLine	Tervitus-\nrida
@@ -1100,6 +1102,7 @@
 	Allow row to break across pages	Luba tabelirea jaotamine mitmele lehele
 	Alt:	Asendustekst:
 	Write a reply	Kirjuta vastus
+	Write a reply (@ to mention)	Kirjuta vastus (@ mainimiseks)
 	Exactly	Täpselt
 	Top	Ülal
 	Leave the equation (Esc)	Välju võrrandist (Esc)

@@ -38,6 +38,7 @@
 	Accessibility	Přístupnost
 	Add	Přidat
 	Add a comment	Přidat komentář
+	Add a comment (@ to mention)	Přidat komentář (@ pro zmínku)
 	Add a Table	Přidat tabulku
 	Add at least one field.	Přidejte alespoň jedno pole.
 	Add Field	Přidat pole
@@ -489,6 +490,7 @@
 	Glow Colors	Barvy záře
 	Go To	Přejít na
 	Go to	Přejít na
+	Go to Comment	Přejít na komentář
 	Go To (⌘⌥G)	Přejít na (⌘⌥G)
 	Go To…	Přejít na…
 	Grab bag	Různé
@@ -1325,6 +1327,7 @@
 	Wrap\nText	Obtékání\ntextu
 	Write & Insert Fields	Psaní a vkládání polí
 	Write a reply	Napište odpověď
+	Write a reply (@ to mention)	Napište odpověď (@ pro zmínku)
 	Yes	Ano
 	Your changes will be lost if you don't save them.	Pokud změny neuložíte, budou ztraceny.
 	Zoom	Lupa

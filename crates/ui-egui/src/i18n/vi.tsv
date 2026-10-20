@@ -34,6 +34,7 @@
 	Add Text	Thêm văn bản
 	Add a Table	Thêm bảng
 	Add a comment	Thêm nhận xét
+	Add a comment (@ to mention)	Thêm nhận xét (@ để nhắc đến)
 	Add to Dictionary	Thêm vào từ điển
 	Add to Style Gallery	Thêm vào thư viện kiểu
 	Address Block	Khối địa chỉ
@@ -366,6 +367,7 @@
 	Go To (⌘⌥G)	Đi tới (⌘⌥G)
 	Go To…	Đi tới…
 	Go to	Đi tới
+	Go to Comment	Đi tới nhận xét
 	Grab bag	Hỗn hợp
 	Greeting Line	Dòng lời chào
 	Greeting\nLine	Dòng\nlời chào
@@ -911,6 +913,7 @@
 	Wrap\nText	Văn bản\nquanh đối tượng
 	Write & Insert Fields	Soạn và chèn trường
 	Write a reply	Viết câu trả lời
+	Write a reply (@ to mention)	Viết câu trả lời (@ để nhắc đến)
 	Zoom	Thu phóng
 	Zoom In	Phóng to
 	Zoom Out	Thu nhỏ

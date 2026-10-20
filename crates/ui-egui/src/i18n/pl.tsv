@@ -28,6 +28,7 @@
 	Add Text	Dodaj tekst
 	Add a Table	Dodaj tabelę
 	Add a comment	Dodaj komentarz
+	Add a comment (@ to mention)	Dodaj komentarz (@, aby wspomnieć)
 	Add to Dictionary	Dodaj do słownika
 	Add to Style Gallery	Dodaj do galerii stylów
 	Address Block	Blok adresu
@@ -289,6 +290,7 @@
 	Go To (⌘⌥G)	Przejdź do (⌘⌥G)
 	Go To…	Przejdź do…
 	Go to	Przejdź do
+	Go to Comment	Przejdź do komentarza
 	Grab bag	Mieszanka
 	Greeting Line	Wiersz powitania
 	Greeting\nLine	Wiersz\npowitania
@@ -814,6 +816,7 @@
 	Wrap\nText	Zawijaj\ntekst
 	Write & Insert Fields	Pisanie i wstawianie pól
 	Write a reply	Napisz odpowiedź
+	Write a reply (@ to mention)	Napisz odpowiedź (@, aby wspomnieć)
 	Zoom	Powiększenie
 	Zoom In	Powiększ
 	Zoom Out	Pomniejsz

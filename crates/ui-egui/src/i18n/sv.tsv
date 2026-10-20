@@ -32,6 +32,7 @@
 	Add Text	Lägg till text
 	Add a Table	Lägg till en tabell
 	Add a comment	Lägg till en kommentar
+	Add a comment (@ to mention)	Lägg till en kommentar (@ för att nämna)
 	Add to Dictionary	Lägg till i ordlistan
 	Add to Style Gallery	Lägg till i stilgalleriet
 	Address Block	Adressblock
@@ -425,6 +426,7 @@
 	Go To (⌘⌥G)	Gå till (⌘⌥G)
 	Go To…	Gå till…
 	Go to	Gå till
+	Go to Comment	Gå till kommentar
 	Grab bag	Blandat
 	Greeting Line	Hälsningsfras
 	Greeting\nLine	Hälsnings-\nfras
@@ -1000,6 +1002,7 @@
 	Wrap\nText	Text-\nombrytning
 	Write & Insert Fields	Skriv och infoga fält
 	Write a reply	Skriv ett svar
+	Write a reply (@ to mention)	Skriv ett svar (@ för att nämna)
 	Zoom	Zoom
 	Zoom In	Zooma in
 	Zoom Out	Zooma ut

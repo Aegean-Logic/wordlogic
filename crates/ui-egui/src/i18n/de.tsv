@@ -22,6 +22,7 @@
 	Accessibility	Barrierefreiheit
 	Add	Hinzufügen
 	Add a comment	Kommentar hinzufügen
+	Add a comment (@ to mention)	Kommentar hinzufügen (@ zum Erwähnen)
 	Add a Table	Tabelle hinzufügen
 	Add Object to Selection	Objekt zur Auswahl hinzufügen
 	Add Space Before Paragraph	Abstand vor Absatz hinzufügen
@@ -372,6 +373,7 @@
 	General	Allgemein
 	Go To	Gehe zu
 	Go to	Gehe zu
+	Go to Comment	Gehe zu Kommentar
 	Go To (⌘⌥G)	Gehe zu (⌘⌥G)
 	Grab bag	Überraschungspaket
 	Greeting Line	Anrede
@@ -889,6 +891,7 @@
 	Wrap\nText	Text\numbrechen
 	Write & Insert Fields	Felder schreiben und einfügen
 	Write a reply	Antwort schreiben
+	Write a reply (@ to mention)	Antwort schreiben (@ zum Erwähnen)
 	Zoom	Zoom
 	Zoom In	Vergrößern
 	Zoom Out	Verkleinern

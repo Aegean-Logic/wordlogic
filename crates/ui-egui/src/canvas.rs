@@ -1759,13 +1759,11 @@ fn balloons(app: &mut WordApp, ui: &mut Ui, painter: &egui::Painter, rects: &[Re
             } else {
                 let dim = |r: bool| if r { t.text_dim } else { t.text };
                 lines.push((balloon_text(painter, author, semibold(fs), t.text, w - 16.0), 0.0));
-                let body = app.session.doc.plain_text(StoryRef::Part(c.part));
-                lines.push((balloon_text(painter, body.trim().to_string(), regular(fs), dim(resolved), w - 16.0), 4.0));
+                lines.push((balloon_comment(painter, &app.session.doc, c.part, regular(fs), dim(resolved), &t, w - 16.0), 4.0));
                 for rid in &thread {
                     let Some(r) = app.session.doc.comments.get(rid) else { continue };
                     lines.push((balloon_text(painter, author_name(&r.author), semibold(fs), t.text, w - 16.0), 9.0));
-                    let text = app.session.doc.plain_text(StoryRef::Part(r.part));
-                    lines.push((balloon_text(painter, text.trim().to_string(), regular(fs), dim(resolved), w - 16.0), 4.0));
+                    lines.push((balloon_comment(painter, &app.session.doc, r.part, regular(fs), dim(resolved), &t, w - 16.0), 4.0));
                 }
                 let h = lines.iter().map(|(g, gap)| g.size().y + gap).sum::<f32>() + 12.0;
                 Rect::from_min_size(pos2(x0, top), vec2(w, h))
@@ -1903,6 +1901,27 @@ fn mirrored(c: char) -> char {
 /// to right, so a right-to-left comment read its words backwards. Each wrapped row is put into
 /// display order (Unicode bidi, per paragraph) and a right-to-left paragraph's rows are set against
 /// the right edge. Text without right-to-left letters is laid out exactly as before.
+/// A comment's text in a balloon, its `@mentions` in the mention colour.
+fn balloon_comment(
+    painter: &egui::Painter,
+    doc: &wordcraft_doc::Document,
+    part: u32,
+    font: egui::FontId,
+    color: Color32,
+    t: &Tokens,
+    width: f32,
+) -> std::sync::Arc<egui::Galley> {
+    let text = doc.plain_text(StoryRef::Part(part));
+    let found = wordcraft_engine::cmd::mention::found(doc, part);
+    let lead = text.chars().take_while(|c| c.is_whitespace()).count();
+    let trimmed = text.trim().to_string();
+    if found.is_empty() || has_rtl(&trimmed) {
+        return balloon_text(painter, trimmed, font, color, width);
+    }
+    let marks: Vec<(usize, usize)> = found.iter().filter_map(|f| f.start.checked_sub(lead).map(|s| (s, f.len))).collect();
+    painter.layout_job(crate::mentions::job(&trimmed, &marks, font, color, crate::mentions::accent(t), width))
+}
+
 fn balloon_text(painter: &egui::Painter, text: String, font: egui::FontId, color: Color32, width: f32) -> std::sync::Arc<egui::Galley> {
     if !has_rtl(&text) {
         return painter.layout(text, font, color, width);

@@ -1064,6 +1064,8 @@ fn info(state: &Mutex<State>, doc: Option<&Doc>) -> Result<Json, String> {
         "signedIn": account.is_some(),
         "inCloud": account.is_some() && remote.is_some(),
         "canShare": can_share,
+        // `@mentions` tell people through the WordLogic app on the server.
+        "mentions": account.is_some() && remote.is_some(),
         "account": account.as_ref().map(Account::shown),
         "server": account.as_ref().map(|a| a.server.clone()),
     }))
@@ -1230,6 +1232,24 @@ fn share_op(nc: &Connection, op: &str, p: &Json, path: &str) -> Result<Json, Str
             Ok(Json::Array(sharees(&data)))
         }
         "share.list" => list(nc, path).map(Json::Array),
+        // People to `@mention`: Nextcloud users the sharing rules let this user find.
+        "people.search" => {
+            let q = [
+                ("search", s("query")),
+                ("itemType", "file".into()),
+                ("lookup", "false".into()),
+                ("perPage", "10".into()),
+                ("shareType[]", "0".into()),
+            ];
+            let data = nc.ocs("GET", "apps/files_sharing/api/v1/sharees", &q, None)?;
+            Ok(Json::Array(people(&data, &nc.server)))
+        }
+        // The WordLogic app checks each person can open the document, then notifies them.
+        "mention.notify" => {
+            let file_id = nc.file_id(path)?;
+            let people = p.get("people").cloned().unwrap_or(json!([]));
+            nc.app("POST", "mention", &json!({"fileId": file_id, "people": people, "text": s("text"), "anchor": s("anchor")}))
+        }
         "share.add" => {
             let kind = s("type");
             let share_type = SHARE_TYPES.iter().find(|(k, _)| *k == kind).map(|(_, v)| *v).unwrap_or(0);
@@ -1341,6 +1361,26 @@ fn sharees(data: &Json) -> Vec<Json> {
                     ["shareWithDisplayNameUnique", "subline"].iter().filter_map(|k| e.get(*k).and_then(Json::as_str)).find(|d| !d.is_empty());
                 out.push(json!({"label": e.get("label").and_then(Json::as_str).unwrap_or(&with), "detail": detail, "type": kind, "shareWith": with}));
             }
+        }
+    }
+    out
+}
+
+/// The users of a sharees answer as people to mention: `[{id, name, email?, profile}]`, `profile`
+/// their page on `server`.
+fn people(data: &Json, server: &str) -> Vec<Json> {
+    let mut out = Vec::new();
+    let mut seen = HashSet::new();
+    let empty = json!({});
+    for bucket in [data.get("exact").unwrap_or(&empty), data] {
+        for e in bucket.get("users").and_then(Json::as_array).into_iter().flatten() {
+            let Some(id) = e.pointer("/value/shareWith").and_then(Json::as_str).filter(|id| !id.is_empty()) else { continue };
+            if !seen.insert(id.to_string()) {
+                continue;
+            }
+            let name = e.get("label").and_then(Json::as_str).filter(|n| !n.is_empty()).unwrap_or(id);
+            let email = e.get("shareWithDisplayNameUnique").and_then(Json::as_str).filter(|d| d.contains('@') && *d != id);
+            out.push(json!({"id": id, "name": name, "email": email, "profile": format!("{server}/index.php/u/{}", encode(id))}));
         }
     }
     out
@@ -1576,6 +1616,29 @@ mod tests {
         }));
         assert_eq!(found.len(), 2);
         assert_eq!(found[1]["type"], "group");
+    }
+
+    #[test]
+    fn people_to_mention_are_users_once_each() {
+        let found = people(
+            &json!({
+                "exact": {"users": [{"label": "Ana Ruiz", "shareWithDisplayNameUnique": "ana@example.com", "value": {"shareType": 0, "shareWith": "ana"}}]},
+                "users": [
+                    {"label": "Ana Ruiz", "value": {"shareType": 0, "shareWith": "ana"}},
+                    {"label": "", "shareWithDisplayNameUnique": "bo b", "value": {"shareType": 0, "shareWith": "bo b"}},
+                    {"label": "No id", "value": {"shareType": 0}},
+                ],
+                "groups": [{"label": "Finance", "value": {"shareType": 1, "shareWith": "finance"}}],
+            }),
+            "https://c.example",
+        );
+        assert_eq!(
+            found,
+            vec![
+                json!({"id": "ana", "name": "Ana Ruiz", "email": "ana@example.com", "profile": "https://c.example/index.php/u/ana"}),
+                json!({"id": "bo b", "name": "bo b", "email": null, "profile": "https://c.example/index.php/u/bo%20b"}),
+            ]
+        );
     }
 
     #[test]

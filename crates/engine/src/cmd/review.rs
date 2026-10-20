@@ -4,16 +4,21 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::{Value, json};
 use wordcraft_doc::para::InlineObject;
-use wordcraft_doc::{Comment, Paragraph, PartKind, Pos, StoryRef, para_block};
+use wordcraft_doc::{Comment, PartKind, Pos, StoryRef};
 
-use super::{fmt_revisions, now_iso, pos_json, sel_result};
+use super::{fmt_revisions, mention, now_iso, pos_json, sel_result};
 use crate::{CmdError, CmdResult, CommandSpec, Selection, Session, p};
 
 pub fn specs() -> Vec<CommandSpec> {
     vec![
-        CommandSpec::new("review.newComment", "New Comment", "Review › Comments", new_comment).key(super::mac_or("Mod+Alt+A / Mod+Alt+M", "Mod+Alt+M")).params(r#"{"text": string}"#),
-        CommandSpec::new("review.reply", "Reply", "Review › Comments", reply).params(r#"{"id": n, "text": string}"#),
-        CommandSpec::new("review.editComment", "Edit Comment", "Review › Comments", edit_comment).params(r#"{"id": n, "text": string}"#),
+        CommandSpec::new("review.newComment", "New Comment", "Review › Comments", new_comment)
+            .key(super::mac_or("Mod+Alt+A / Mod+Alt+M", "Mod+Alt+M"))
+            .params(r#"{"text": string, "mentions"?: [{"name", "id"?, "link": "mailto:…"}]} → {id, story, anchor, mentions} (each person's first `@Name` becomes a mention; `mentions` answers who's newly mentioned)"#),
+        CommandSpec::new("review.reply", "Reply", "Review › Comments", reply).params(r#"{"id": n, "text": string, "mentions"?: [{"name", "id"?, "link"}]} → {id, anchor, mentions}"#),
+        CommandSpec::new("review.editComment", "Edit Comment", "Review › Comments", edit_comment).params(r#"{"id": n, "text": string, "mentions"?: [{"name", "id"?, "link"}]} → {id, anchor, mentions}"#),
+        CommandSpec::new("review.goToComment", "Go to Comment", "Review › Comments", go_to_comment)
+            .params(r#"{"anchor": durable id} (a mention's link: puts the caret at the comment and opens the Comments pane)"#)
+            .pure(),
         CommandSpec::new("review.deleteComment", "Delete", "Review › Comments", delete_comment).params(r#"{"id"?: n, "all"?: bool}"#),
         CommandSpec::new("review.resolveComment", "Resolve", "Review › Comments", |s, v| {
             let id = p::u64(v, "id").map(|x| x as u32).or_else(|| comment_at_caret(s)).ok_or_else(|| CmdError::Params("`id` required".into()))?;
@@ -131,17 +136,32 @@ fn new_comment(s: &mut Session, v: &Value) -> CmdResult {
     } else {
         (a, b)
     };
-    let part = s.doc.try_add_part(PartKind::Comment, vec![para_block(Paragraph::with_text(&text, Default::default()))])?;
+    let (blocks, used) = mention::body(&text, &mention::people(v));
+    if !used.is_empty() {
+        mention::ensure_style(&mut s.doc);
+    }
+    let part = s.doc.try_add_part(PartKind::Comment, blocks)?;
     let id = comment_id(s)?;
     let initials = s.user_initials();
-    s.doc
-        .comments
-        .insert(id, Comment { author: s.author.clone(), initials, date: now_iso(), parent: None, resolved: false, part, ..Default::default() });
+    let durable = mention::durable_id(&s.doc, id);
+    s.doc.comments.insert(
+        id,
+        Comment {
+            author: s.author.clone(),
+            initials,
+            date: now_iso(),
+            parent: None,
+            resolved: false,
+            part,
+            durable_id: Some(durable.clone()),
+            ..Default::default()
+        },
+    );
     let props = Default::default();
     s.doc.insert_object(&b, InlineObject::CommentEnd { id }, &props)?;
     s.doc.insert_object(&a, InlineObject::CommentStart { id }, &props)?;
     s.view.comments_pane = true;
-    Ok(json!({"id": id, "story": part}))
+    Ok(json!({"id": id, "story": part, "anchor": durable, "mentions": mention::new_people(&used, &[])}))
 }
 
 fn reply(s: &mut Session, v: &Value) -> CmdResult {
@@ -150,14 +170,30 @@ fn reply(s: &mut Session, v: &Value) -> CmdResult {
         return Err(CmdError::Params("no such comment".into()));
     }
     let text = p::req_str(v, "text")?;
-    let part = s.doc.try_add_part(PartKind::Comment, vec![para_block(Paragraph::with_text(text, Default::default()))])?;
+    let (blocks, used) = mention::body(text, &mention::people(v));
+    if !used.is_empty() {
+        mention::ensure_style(&mut s.doc);
+    }
+    let part = s.doc.try_add_part(PartKind::Comment, blocks)?;
     let id = comment_id(s)?;
     let initials = s.user_initials();
+    let durable = mention::durable_id(&s.doc, id);
     s.doc.comments.insert(
         id,
-        Comment { author: s.author.clone(), initials, date: now_iso(), parent: Some(parent), resolved: false, part, ..Default::default() },
+        Comment {
+            author: s.author.clone(),
+            initials,
+            date: now_iso(),
+            parent: Some(parent),
+            resolved: false,
+            part,
+            durable_id: Some(durable.clone()),
+            ..Default::default()
+        },
     );
-    Ok(json!({"id": id}))
+    // A reply's link opens its thread.
+    let anchor = thread_durable(s, id).unwrap_or(durable);
+    Ok(json!({"id": id, "anchor": anchor, "mentions": mention::new_people(&used, &[])}))
 }
 
 /// An id no comment has: one past the largest, or the lowest free one once a file used `u32::MAX`.
@@ -166,14 +202,66 @@ fn comment_id(s: &Session) -> Result<u32, CmdError> {
     wordcraft_doc::free_id(ids.keys().next_back().copied(), ids.keys().copied(), 0).ok_or_else(|| CmdError::Failed("no free comment id".into()))
 }
 
-/// Replace a comment's (or reply's) text; each line becomes a paragraph.
+/// The first comment of the thread `id` is in (a reply's parent, up to a bounded depth: a parent
+/// cycle from a hostile file ends the walk).
+fn thread_root(s: &Session, id: u32) -> u32 {
+    let mut root = id;
+    for _ in 0..64 {
+        match s.doc.comments.get(&root).and_then(|c| c.parent) {
+            Some(p) if s.doc.comments.contains_key(&p) && p != root => root = p,
+            _ => break,
+        }
+    }
+    root
+}
+
+/// What a link to comment `id` names: its thread's durable id, else its own (given one if it has
+/// none: it's the comment being written). Other comments are left as they are.
+fn thread_durable(s: &mut Session, id: u32) -> Option<String> {
+    let root = thread_root(s, id);
+    if let Some(d) = s.doc.comments.get(&root).and_then(|c| c.durable_id.clone()) {
+        return Some(d);
+    }
+    if let Some(d) = s.doc.comments.get(&id).and_then(|c| c.durable_id.clone()) {
+        return Some(d);
+    }
+    let d = mention::durable_id(&s.doc, id);
+    s.doc.comments.get_mut(&id)?.durable_id = Some(d.clone());
+    Some(d)
+}
+
+/// Replace a comment's (or reply's) text; each line becomes a paragraph, with its mentions.
 fn edit_comment(s: &mut Session, v: &Value) -> CmdResult {
     let id = p::u64(v, "id").and_then(|x| u32::try_from(x).ok()).ok_or_else(|| CmdError::Params("`id` required".into()))?;
     let text = p::req_str(v, "text")?;
     let part = s.doc.comments.get(&id).map(|c| c.part).ok_or_else(|| CmdError::Params("no such comment".into()))?;
-    let blocks = text.split('\n').take(10_000).map(|l| para_block(Paragraph::with_text(l.trim_end_matches('\r'), Default::default()))).collect();
+    let before = mention::found(&s.doc, part);
+    let (blocks, used) = mention::body(text, &mention::people(v));
+    if !used.is_empty() {
+        mention::ensure_style(&mut s.doc);
+    }
     s.doc.set_story(StoryRef::Part(part), blocks)?;
-    Ok(json!({"id": id}))
+    let anchor = thread_durable(s, id);
+    Ok(json!({"id": id, "anchor": anchor, "mentions": mention::new_people(&used, &before)}))
+}
+
+/// Opens a comment from its durable id (a mention's link): the caret goes to its thread's anchor.
+fn go_to_comment(s: &mut Session, v: &Value) -> CmdResult {
+    let anchor = p::str(v, "anchor").unwrap_or("").trim().to_string();
+    let found = s
+        .doc
+        .comments
+        .iter()
+        .find(|(_, c)| !anchor.is_empty() && c.durable_id.as_deref().is_some_and(|d| d.eq_ignore_ascii_case(&anchor)))
+        .map(|(k, _)| *k);
+    let id = thread_root(s, found.ok_or_else(|| CmdError::Params(format!("There's no comment {anchor}.")))?);
+    if let Some(p) = comment_list(s).into_iter().find(|(x, _)| *x == id).and_then(|(_, p)| p) {
+        s.sel = Selection::caret(p);
+    }
+    s.view.comments_pane = true;
+    let mut out = sel_result(s)?;
+    out["comment"] = json!(id);
+    Ok(out)
 }
 
 /// The innermost comment whose range holds the caret.
@@ -299,10 +387,16 @@ fn list_comments(s: &mut Session, _: &Value) -> CmdResult {
         list.iter()
             .filter_map(|(id, pos)| {
                 let c = s.doc.comments.get(id)?;
+                let mentions: Vec<Value> = mention::found(&s.doc, c.part)
+                    .into_iter()
+                    .map(|m| json!({"start": m.start, "len": m.len, "name": m.name, "link": m.link}))
+                    .collect();
                 Some(json!({
                     "id": id, "author": c.author, "date": c.date, "resolved": c.resolved, "parent": c.parent,
                     "text": s.doc.plain_text(StoryRef::Part(c.part)),
                     "anchor": pos.as_ref().map(pos_json),
+                    "mentions": mentions,
+                    "durableId": c.durable_id,
                 }))
             })
             .collect(),

@@ -32,6 +32,7 @@
 	Add Text	Aggiungi testo
 	Add a Table	Aggiungi una tabella
 	Add a comment	Aggiungi un commento
+	Add a comment (@ to mention)	Aggiungi un commento (@ per menzionare)
 	Add to Dictionary	Aggiungi al dizionario
 	Add to Style Gallery	Aggiungi alla raccolta stili
 	Address Block	Blocco di indirizzi
@@ -367,6 +368,7 @@
 	Go To (⌘⌥G)	Vai a (⌘⌥G)
 	Go To…	Vai a…
 	Go to	Vai a
+	Go to Comment	Vai al commento
 	Grab bag	Dati aggiuntivi
 	Greeting Line	Formula di apertura
 	Greeting\nLine	Formula di\napertura
@@ -906,6 +908,7 @@
 	Wrap\nText	Disponi\ntesto
 	Write & Insert Fields	Composizione e inserimento campi
 	Write a reply	Scrivi una risposta
+	Write a reply (@ to mention)	Scrivi una risposta (@ per menzionare)
 	Zoom	Zoom
 	Zoom In	Ingrandisci
 	Zoom Out	Riduci

@@ -54,7 +54,8 @@
 //! Sharing (the Share dialog's cloud is the page, which has the user's Nextcloud session):
 //!
 //! - `wordcraft:cloud` (to the parent): `{ id, op, params }`, an operation of
-//!   `wordcraft_ui_egui::share::Cloud` (`params` as JSON text).
+//!   `wordcraft_ui_egui::cloud::Cloud` or `wordcraft_ui_egui::mentions` (`people.search`,
+//!   `mention.notify`) (`params` as JSON text).
 //! - `wordcraft:cloud:reply` (from the parent): `{ id, ok, json?, error? }`, its answer (`json`
 //!   as JSON text when `ok`, else `error`).
 //!
