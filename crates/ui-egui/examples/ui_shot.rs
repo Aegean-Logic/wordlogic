@@ -147,5 +147,6 @@ fn fake_cloud(signed_in: bool) -> wordcraft_ui_egui::cloud::Cloud {
         inbox,
         files: true,
         location: None,
+        talk: None,
     }
 }

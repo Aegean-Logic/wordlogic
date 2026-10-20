@@ -14,6 +14,9 @@
 //! knows the document they are about; the talking happens on worker threads, which answer in the
 //! inbox and ask for a repaint. The account and the tied files are remembered in
 //! `nextcloud.json` in the settings folder; the password never is.
+//!
+//! On a server with Nextcloud Talk, "Chat about this file" opens the document's Talk conversation
+//! in the browser ([`Connection::talk_url`]).
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -44,6 +47,11 @@ const SIGN_IN_POLLS: u32 = 600;
 const MAX_ANSWER_BYTES: u64 = 256 << 20;
 /// How often a saved document's file is looked at for changes to send.
 const SAVE_CHECK_SECONDS: f64 = 1.0;
+/// How long after a failed look at whether the server has Talk to look again.
+const TALK_RETRY_SECONDS: f64 = 60.0;
+/// What Talk's 404 for a file means: it has no conversation for files nobody else can open.
+const TALK_NOT_SHARED: &str =
+    "This document has no chat yet: chats are for shared files. Share it with someone (Share, at the top right), then open the chat again.";
 /// How long a joined session waits for its document to open (the Save Changes prompt may be up).
 const JOIN_WAIT_SECONDS: f64 = 120.0;
 /// Nextcloud's share types and file permissions (read; read + update).
@@ -142,6 +150,8 @@ struct State {
     shared: Option<String>,
     /// Files to open (from "Open in Desktop App").
     open_now: Vec<String>,
+    /// Whether the server (named) has Nextcloud Talk, once asked.
+    talk: Option<(String, bool)>,
 }
 
 /// Records that `stored` changed and writes it out (left for the next frame if that fails).
@@ -191,6 +201,8 @@ pub struct Nextcloud {
     pending_join: Option<(String, coedit::Joined, f64)>,
     /// A `wordlogic://open` link waiting to be followed: (server, path, sign-in asked for).
     link: Option<(String, String, bool)>,
+    /// When the server may next be asked whether it has Talk.
+    talk_asked_at: f64,
 }
 
 fn lock(state: &Mutex<State>) -> MutexGuard<'_, State> {
@@ -220,6 +232,7 @@ impl Nextcloud {
             coedit: None,
             pending_join: None,
             link: None,
+            talk_asked_at: f64::NEG_INFINITY,
         }
     }
 
@@ -227,6 +240,7 @@ impl Nextcloud {
     pub fn cloud(&self) -> Cloud {
         let requests = self.requests.clone();
         let state = self.state.clone();
+        let talk_state = self.state.clone();
         Cloud {
             request: Box::new(move |id, op, params| {
                 requests.lock().unwrap_or_else(|e| e.into_inner()).push((id, op.to_string(), params));
@@ -237,6 +251,7 @@ impl Nextcloud {
                 let s = lock(&state);
                 tie_key(&s.stored.files, local).and_then(|k| s.stored.files.get(&k)).map(|r| r.path.clone())
             })),
+            talk: Some(Box::new(move || has_talk(&lock(&talk_state)))),
         }
     }
 
@@ -246,7 +261,7 @@ impl Nextcloud {
         let requests = std::mem::take(&mut *self.requests.lock().unwrap_or_else(|e| e.into_inner()));
         for (id, op, params) in requests {
             // Only the operations about the document get a copy of it.
-            let doc = if op.starts_with("share.") || op == "account.signIn" { self.doc(app) } else { None };
+            let doc = if op.starts_with("share.") || op == "account.signIn" || op == "talk.open" { self.doc(app) } else { None };
             let state = self.state.clone();
             let answers = self.answers.clone();
             let ctx = ctx.clone();
@@ -272,6 +287,7 @@ impl Nextcloud {
             }
         }
         self.follow_link(app, ctx);
+        self.ask_about_talk(ctx);
         let seen = (app.session.document_id(), app.session.dirty);
         let just_saved = self.seen.0 == seen.0 && self.seen.1 && !seen.1;
         self.seen = seen;
@@ -392,6 +408,34 @@ impl Nextcloud {
     fn replace_pending(&mut self, next: Option<(String, coedit::Joined, f64)>) {
         if let Some((_, old, _)) = std::mem::replace(&mut self.pending_join, next) {
             old.leave(&self.state);
+        }
+    }
+
+    /// Asks the server whether it has Nextcloud Talk, once per account (again a minute after
+    /// a failed try), on a worker thread.
+    fn ask_about_talk(&mut self, ctx: &egui::Context) {
+        let now = ctx.input(|i| i.time);
+        let server = {
+            let s = lock(&self.state);
+            let Some(account) = &s.stored.account else { return };
+            if s.talk.as_ref().is_some_and(|(server, _)| *server == account.server) || now < self.talk_asked_at {
+                return;
+            }
+            account.server.clone()
+        };
+        self.talk_asked_at = now + TALK_RETRY_SECONDS;
+        let state = self.state.clone();
+        let ctx = ctx.clone();
+        let spawned =
+            std::thread::Builder::new().name("nextcloud-talk".into()).spawn(move || match Connection::open(&state).and_then(|nc| nc.has_talk()) {
+                Ok(talk) => {
+                    lock(&state).talk = Some((server, talk));
+                    ctx.request_repaint();
+                }
+                Err(e) => log::info!("Couldn't ask {server} whether it has Talk: {e}"),
+            });
+        if let Err(e) = spawned {
+            log::warn!("Couldn't ask whether the server has Talk: {e}");
         }
     }
 
@@ -564,6 +608,14 @@ fn parse_link(url: &str) -> Option<(String, String)> {
 
 /// Whether two spellings name the same file: on Windows, `/` and `\` are the same separator
 /// and case doesn't matter.
+/// Whether the signed-in account's server has Nextcloud Talk (as last asked).
+fn has_talk(s: &State) -> bool {
+    match (&s.stored.account, &s.talk) {
+        (Some(account), Some((server, talk))) => *talk && *server == account.server,
+        _ => false,
+    }
+}
+
 fn same_path(a: &str, b: &str) -> bool {
     if cfg!(windows) { a.replace('/', "\\").to_lowercase() == b.replace('/', "\\").to_lowercase() } else { a == b }
 }
@@ -754,6 +806,13 @@ fn run(state: &Mutex<State>, op: &str, params: &Json, doc: Option<Doc>, open_url
         "share.upload" => {
             let name = upload(state, doc)?;
             Ok(info_after_upload(state, &name))
+        }
+        "talk.open" => {
+            let remote = doc.remote.as_ref().ok_or("Upload the document to Nextcloud first.")?;
+            let nc = Connection::open(state)?;
+            let url = nc.talk_url(&format!("/{}", remote.path))?;
+            open_url(&url);
+            Ok(json!({"url": url}))
         }
         _ => {
             let remote = doc.remote.as_ref().ok_or("Upload the document to Nextcloud first.")?;
@@ -1553,6 +1612,30 @@ impl Connection {
             .ok_or_else(|| "Nextcloud didn't give the file's id.".into())
     }
 
+    /// Whether the server has Nextcloud Talk (`spreed` among its capabilities).
+    fn has_talk(&self) -> Result<bool, String> {
+        let data = self.ocs("GET", "cloud/capabilities", &[], None)?;
+        Ok(data.pointer("/capabilities/spreed").is_some_and(|c| !c.is_null()))
+    }
+
+    /// The address of the file's Talk conversation (`/call/{token}`), which Talk makes the first
+    /// time it's asked for; an error when the file isn't shared with anyone (Talk's 404).
+    fn talk_url(&self, path: &str) -> Result<String, String> {
+        let file_id = self.file_id(path)?;
+        let url = format!("{}/ocs/v2.php/apps/spreed/api/v1/file/{file_id}?format=json", self.server);
+        let headers = [("OCS-APIRequest", "true".to_string()), ("Accept", "application/json".to_string())];
+        let r = self.send("GET", &url, &headers, Vec::new())?;
+        if r.status == 404 {
+            return Err(TALK_NOT_SHARED.into());
+        }
+        let answer = r.json().ok();
+        if !(200..300).contains(&r.status) {
+            let message = answer.as_ref().and_then(|a| a.pointer("/ocs/meta/message")).and_then(Json::as_str).filter(|m| !m.is_empty());
+            return Err(message.map(str::to_string).unwrap_or_else(|| format!("Nextcloud Talk answered {}.", r.status)));
+        }
+        talk_url(&self.server, answer.as_ref()).ok_or_else(|| "Nextcloud Talk didn't say which chat is the document's.".into())
+    }
+
     /// Whether the user may share the file (its WebDAV permissions include R).
     fn can_share(&self, path: &str) -> Result<bool, String> {
         let body =
@@ -1566,6 +1649,13 @@ impl Connection {
         let permissions = text.split("<oc:permissions>").nth(1).and_then(|t| t.split('<').next()).unwrap_or("");
         Ok(permissions.contains('R'))
     }
+}
+
+/// The conversation's address from Talk's answer for a file (`ocs.data.token`). The token is
+/// only letters and digits; anything else isn't put in an address.
+fn talk_url(server: &str, answer: Option<&Json>) -> Option<String> {
+    let token = answer?.pointer("/ocs/data/token")?.as_str()?;
+    (!token.is_empty() && token.len() <= 64 && token.chars().all(|c| c.is_ascii_alphanumeric())).then(|| format!("{server}/index.php/call/{token}"))
 }
 
 fn basic(login: &str, password: &str) -> String {
@@ -1588,6 +1678,39 @@ fn encode(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn talk_addresses() {
+        let answer = |token: Json| json!({"ocs": {"meta": {"statuscode": 200}, "data": {"token": token}}});
+        assert_eq!(
+            talk_url("http://localhost:8080", Some(&answer(json!("k3x9ab2q")))).as_deref(),
+            Some("http://localhost:8080/index.php/call/k3x9ab2q")
+        );
+        assert_eq!(
+            talk_url("https://nc.test/nextcloud", Some(&answer(json!("Ab1")))).as_deref(),
+            Some("https://nc.test/nextcloud/index.php/call/Ab1")
+        );
+        for hostile in [json!("../../settings"), json!("a b"), json!(""), json!(42), json!(null), json!("x".repeat(65))] {
+            assert_eq!(talk_url("https://nc.test", Some(&answer(hostile.clone()))), None, "{hostile}");
+        }
+        assert_eq!(talk_url("https://nc.test", Some(&json!({"ocs": {}}))), None);
+        assert_eq!(talk_url("https://nc.test", None), None);
+    }
+
+    #[test]
+    fn talk_is_the_signed_in_servers() {
+        let account = Account { server: "https://a.test".into(), login: "ana".into(), user: "ana".into() };
+        let mut s = State::default();
+        assert!(!has_talk(&s), "not asked yet");
+        s.talk = Some(("https://a.test".into(), true));
+        assert!(!has_talk(&s), "signed out");
+        s.stored.account = Some(account.clone());
+        assert!(has_talk(&s));
+        s.stored.account = Some(Account { server: "https://b.test".into(), ..account });
+        assert!(!has_talk(&s), "another server, not asked yet");
+        s.talk = Some(("https://b.test".into(), false));
+        assert!(!has_talk(&s), "no Talk there");
+    }
 
     #[test]
     fn server_addresses() {

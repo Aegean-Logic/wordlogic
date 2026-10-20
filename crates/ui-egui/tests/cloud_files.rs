@@ -20,6 +20,8 @@ struct Fake {
     /// Local copies tied to cloud files: (local path, cloud path).
     tied: Arc<Mutex<Vec<(String, String)>>>,
     dir: PathBuf,
+    /// The server has Talk: `talk.open`'s answer.
+    talk: Arc<Mutex<Option<Result<Json, String>>>>,
 }
 
 /// Writes a .docx holding `text` at `path`.
@@ -34,7 +36,7 @@ impl Fake {
         let dir = std::env::temp_dir().join(format!("wordlogic-cloud-test-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
-        Fake { requests: Arc::default(), signed_in: Arc::new(Mutex::new(signed_in)), tied: Arc::default(), dir }
+        Fake { requests: Arc::default(), signed_in: Arc::new(Mutex::new(signed_in)), tied: Arc::default(), dir, talk: Arc::default() }
     }
 
     fn cloud(&self) -> Cloud {
@@ -42,6 +44,7 @@ impl Fake {
         let answers = inbox.clone();
         let me = self.clone();
         let tied = self.tied.clone();
+        let talk = self.talk.clone();
         Cloud {
             request: Box::new(move |id, op, params| {
                 me.requests.lock().unwrap().push((op.to_string(), params.clone()));
@@ -99,6 +102,7 @@ impl Fake {
                             _ => Ok(json!({"name": "Report.docx"})),
                         }
                     }
+                    "talk.open" => me.talk.lock().unwrap().clone().unwrap_or_else(|| Err("no Talk".into())),
                     other => Err(format!("unexpected {other}")),
                 };
                 answers.lock().unwrap().push((id, answer));
@@ -106,6 +110,7 @@ impl Fake {
             inbox,
             files: true,
             location: Some(Box::new(move |local: &str| tied.lock().unwrap().iter().find(|(l, _)| l == local).map(|(_, r)| r.clone()))),
+            talk: Some(Box::new(move || talk.lock().unwrap().is_some())),
         }
     }
 
@@ -339,4 +344,38 @@ fn the_account_page_is_only_where_files_can_be_opened_from_the_cloud() {
     let app = app_with(Some(cloud));
     assert!(!wordcraft_ui_egui::cloud_files::available(&app));
     assert!(!wordcraft_ui_egui::cloud_files::available(&app_with(None)));
+}
+
+#[test]
+fn chat_is_offered_for_nextcloud_documents_on_a_server_with_talk() {
+    let fake = Fake::new("chat-offered", true);
+    *fake.talk.lock().unwrap() = Some(Ok(json!({"url": "https://cloud.example/index.php/call/abc"})));
+    let mut h = harness(&fake);
+    assert!(h.query_by_label("Chat").is_none(), "a document on this computer has no chat");
+    assert!(h.state_mut().run("ui.chat", json!({})).is_err());
+    open_report(&mut h);
+    assert!(wordcraft_ui_egui::talk::available(h.state()));
+    h.get_by_label("Chat").click();
+    h.run_steps(4);
+    assert_eq!(fake.asked("talk.open").len(), 1);
+    assert!(!h.state().talk.opening(), "answered");
+    assert!(h.state().status_msg.as_ref().is_some_and(|(t, _)| t.contains("opened in your browser")));
+
+    // Without Talk on the server, no Chat.
+    *fake.talk.lock().unwrap() = None;
+    h.run_steps(2);
+    assert!(h.query_by_label("Chat").is_none());
+}
+
+#[test]
+fn chat_about_an_unshared_document_says_to_share_it_first() {
+    let fake = Fake::new("chat-unshared", true);
+    *fake.talk.lock().unwrap() = Some(Err("This document has no chat yet: chats are for shared files.".into()));
+    let mut h = harness(&fake);
+    open_report(&mut h);
+    let r = h.state_mut().run("ui.chat", json!({}));
+    assert!(r.is_ok(), "{r:?}");
+    h.run_steps(4);
+    let status = h.state().status_msg.clone();
+    assert!(status.as_ref().is_some_and(|(t, _)| t.contains("chats are for shared files")), "{status:?}");
 }

@@ -257,6 +257,15 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                         let _ = app.run("ui.backstage", json!({"value": true, "page": "export"}));
                     }
                     ui.add_space(6.0);
+                    // Chat about the document in Nextcloud Talk (in the browser), as Word opens a
+                    // file's Teams chat: for documents in Nextcloud, on a server with Talk.
+                    if crate::talk::available(app) {
+                        let hint = tl!("Chat about this file: its Nextcloud Talk conversation, in the browser");
+                        if crate::widgets::icon_text_button(ui, "chat", tl!("Chat"), regular(12.0)).on_hover_text(hint).clicked() {
+                            let _ = app.run("ui.chat", json!({}));
+                        }
+                        ui.add_space(4.0);
+                    }
                     // In the browser: carry on in WordLogic on this computer, as Word for the web's
                     // Open in Desktop App does (together with everyone still editing here). A
                     // narrow window gets the icon alone.

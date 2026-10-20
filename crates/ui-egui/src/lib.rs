@@ -83,6 +83,7 @@ pub mod table_mouse;
 pub mod table_pen;
 pub mod table_resize;
 pub mod table_ruler;
+pub mod talk;
 pub mod theme;
 pub mod widgets;
 pub mod window_geometry;
@@ -454,6 +455,8 @@ pub struct WordApp {
     pub share: Option<share::ShareDialog>,
     /// `@mentions` in comments: the people picker and the notifications under way.
     pub mentions: mentions::Mentions,
+    /// "Chat about this file" (Nextcloud Talk) being opened.
+    pub talk: talk::Talk,
     /// The others in a shared document (set by the host with [`WordApp::set_presence`]): drawn
     /// in the document and in the title bar.
     pub presence: Vec<Presence>,
@@ -618,6 +621,7 @@ impl WordApp {
             colors: None,
             share: None,
             mentions: Default::default(),
+            talk: Default::default(),
             presence: Vec::new(),
             presence_moved: Default::default(),
             restrict: Default::default(),
@@ -1548,6 +1552,13 @@ impl WordApp {
                 self.share = share::ShareDialog::open(self);
                 json!({"open": self.share.is_some()})
             }
+            // "Chat about this file": the document's Nextcloud Talk chat, in the browser.
+            "ui.chat" => {
+                if let Err(e) = talk::open(self) {
+                    return Some(Err(e));
+                }
+                json!({"opening": self.talk.opening()})
+            }
             "ui.discord" => {
                 self.canvas.open_url = Some("https://www.aegeanlogic.co.uk".into());
                 json!({})
@@ -2135,6 +2146,7 @@ impl WordApp {
         dialogs::show(self, &ctx);
         share::show(self, &ctx);
         mentions::show(self, &ctx);
+        talk::show(self, &ctx);
         cloud_files::show(self, &ctx);
         #[cfg(not(target_arch = "wasm32"))]
         file_browser::show(self, &ctx);
