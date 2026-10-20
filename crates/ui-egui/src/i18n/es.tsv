@@ -31,6 +31,7 @@
 	Add Text	Añadir texto
 	Add a Table	Añadir una tabla
 	Add a comment	Añadir un comentario
+	Add a comment (@ to mention)	Añadir un comentario (@ para mencionar)
 	Add to Dictionary	Añadir al diccionario
 	Add to Style Gallery	Añadir a la galería de estilos
 	Address Block	Bloque de dirección
@@ -432,6 +433,7 @@
 	Go To (⌘⌥G)	Ir a (⌘⌥G)
 	Go To…	Ir a…
 	Go to	Ir a
+	Go to Comment	Ir al comentario
 	Grab bag	Miscelánea
 	Greeting Line	Línea de saludo
 	Greeting\nLine	Línea de\nsaludo
@@ -1010,6 +1012,7 @@
 	Wrap\nText	Ajustar\ntexto
 	Write & Insert Fields	Escribir e insertar campos
 	Write a reply	Escribir una respuesta
+	Write a reply (@ to mention)	Escribir una respuesta (@ para mencionar)
 	Zoom	Zoom
 	Zoom In	Acercar
 	Zoom Out	Alejar

@@ -34,6 +34,7 @@
 	Add Text	Добавяне на текст
 	Add a Table	Добавяне на таблица
 	Add a comment	Добавяне на коментар
+	Add a comment (@ to mention)	Добавяне на коментар (@ за споменаване)
 	Add to Dictionary	Добавяне в речника
 	Add to Style Gallery	Добавяне към галерията със стилове
 	Address Block	Адресен блок
@@ -372,6 +373,7 @@
 	Go To (⌘⌥G)	Отиване до (⌘⌥G)
 	Go To…	Отиване до…
 	Go to	Отиване до
+	Go to Comment	Отиване до коментар
 	Grab bag	Смесица
 	Greeting Line	Ред за обръщение
 	Greeting\nLine	Ред за\nобръщение
@@ -919,6 +921,7 @@
 	Wrap\nText	Обтичане\nна текста
 	Write & Insert Fields	Писане и вмъкване на полета
 	Write a reply	Напишете отговор
+	Write a reply (@ to mention)	Напишете отговор (@ за споменаване)
 	Zoom	Мащаб
 	Zoom In	Увеличаване
 	Zoom Out	Намаляване

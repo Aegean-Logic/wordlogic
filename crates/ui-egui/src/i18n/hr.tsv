@@ -89,6 +89,7 @@
 	Add Text	Dodaj tekst
 	Add a Table	Dodaj tablicu
 	Add a comment	Dodaj komentar
+	Add a comment (@ to mention)	Dodaj komentar (@ za spominjanje)
 	Add at least one field.	Dodajte barem jedno polje.
 	Add line numbering	Dodaj numeriranje redaka
 	Add space between Asian and Latin text	Dodaj razmak između azijskog i latiničnog teksta
@@ -924,6 +925,7 @@
 	Go To (⌘⌥G)	Idi na (⌘⌥G)
 	Go To…	Idi na…
 	Go to	Idi na
+	Go to Comment	Idi na komentar
 	Go to what:	Idi na:
 	Good afternoon	Dobar dan
 	Good evening	Dobra večer
@@ -2440,6 +2442,7 @@ preview	Title	Naslov
 	Wrap\nText	Obtok\nteksta
 	Write & Insert Fields	Napiši i umetni polja
 	Write a reply	Napišite odgovor
+	Write a reply (@ to mention)	Napišite odgovor (@ za spominjanje)
 	Year	Godina
 	Yes	Da
 	Yields	Rezultira

@@ -12,6 +12,7 @@
 	Accessibility	協助工具
 	Add	新增
 	Add a comment	新增註解
+	Add a comment (@ to mention)	新增註解（@ 提及他人）
 	Add a Table	新增表格
 	Add Object to Selection	將物件加入選取範圍
 	Add Space Before Paragraph	在段落前新增間距
@@ -430,6 +431,7 @@
 	General	一般
 	Go To	移至
 	Go to	移至
+	Go to Comment	移至註解
 	Go To (⌘⌥G)	移至 (⌘⌥G)
 	Grab bag	隨機展示
 	Greeting Line	問候語
@@ -963,6 +965,7 @@
 	Wrap\nText	文繞圖
 	Write & Insert Fields	書寫與插入欄位
 	Write a reply	撰寫回覆
+	Write a reply (@ to mention)	撰寫回覆（@ 提及他人）
 	Zoom	縮放
 	Zoom In	放大
 	Zoom Out	縮小

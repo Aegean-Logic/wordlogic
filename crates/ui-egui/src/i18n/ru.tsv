@@ -24,6 +24,7 @@
 	Accessibility	Специальные возможности
 	Add	Добавить
 	Add a comment	Добавить комментарий
+	Add a comment (@ to mention)	Добавить комментарий (@ для упоминания)
 	Add a Table	Добавить таблицу
 	Add Space Before Paragraph	Добавить интервал перед абзацем
 	Add Text	Добавить текст
@@ -295,6 +296,7 @@
 	General	Общие
 	Go To	Перейти
 	Go to	Перейти
+	Go to Comment	Перейти к комментарию
 	Go To (⌘⌥G)	Перейти (⌘⌥G)
 	Grab bag	Разное
 	Greeting Line	Строка приветствия
@@ -860,6 +862,7 @@ preview	Title	Пример
 	That format doesn't keep everything, so the document is still open. Save it as a Word document (.docx) to go on.	Этот формат сохраняет не всё, поэтому документ остаётся открытым. Чтобы продолжить, сохраните его как документ Word (.docx).
 	Top Margin	Верхнее поле
 	Write a reply	Написать ответ
+	Write a reply (@ to mention)	Написать ответ (@ для упоминания)
 	Direction:	Направление:
 	Right-to-left	Справа налево
 	Left-to-right	Слева направо

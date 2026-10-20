@@ -20,6 +20,7 @@
 	Accessibility	Accessibilité
 	Add	Ajouter
 	Add a comment	Ajouter un commentaire
+	Add a comment (@ to mention)	Ajouter un commentaire (@ pour mentionner)
 	Add a Table	Ajouter un tableau
 	Add Object to Selection	Ajouter l’objet à la sélection
 	Add Space Before Paragraph	Ajouter un espace avant le paragraphe
@@ -383,6 +384,7 @@
 	General	Général
 	Go To	Atteindre
 	Go to	Atteindre
+	Go to Comment	Atteindre le commentaire
 	Go To (⌘⌥G)	Atteindre (⌘⌥G)
 	Go To…	Atteindre…
 	Grab bag	Divers
@@ -920,6 +922,7 @@
 	Wrap\nText	Habillage\ndu texte
 	Write & Insert Fields	Écriture et insertion de champs
 	Write a reply	Écrire une réponse
+	Write a reply (@ to mention)	Écrire une réponse (@ pour mentionner)
 	Zoom	Zoom
 	Zoom In	Zoom avant
 	Zoom Out	Zoom arrière

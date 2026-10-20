@@ -26,6 +26,7 @@
 	Accessibility	Akadálymentesség
 	Add	Hozzáadás
 	Add a comment	Megjegyzés hozzáadása
+	Add a comment (@ to mention)	Megjegyzés hozzáadása (@ az említéshez)
 	Add a Table	Táblázat hozzáadása
 	Add Space Before Paragraph	Térköz a bekezdés előtt
 	Add Text	Szöveg hozzáadása
@@ -293,6 +294,7 @@
 	General	Általános
 	Go To	Ugrás
 	Go to	Ugrás
+	Go to Comment	Ugrás a megjegyzéshez
 	Go To (⌘⌥G)	Ugrás (⌘⌥G)
 	Grab bag	Vegyes
 	Greeting Line	Megszólítás
@@ -852,6 +854,7 @@
 	That format doesn't keep everything, so the document is still open. Save it as a Word document (.docx) to go on.	Ez a formátum nem őriz meg mindent, ezért a dokumentum nyitva maradt. A folytatáshoz mentsd Word-dokumentumként (.docx).
 	Top Margin	Felső margó
 	Write a reply	Válasz írása
+	Write a reply (@ to mention)	Válasz írása (@ az említéshez)
 	Direction:	Irány:
 	Right-to-left	Jobbról balra
 	Left-to-right	Balról jobbra

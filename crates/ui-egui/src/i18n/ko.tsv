@@ -11,6 +11,7 @@
 	Accessibility	접근성
 	Add	추가
 	Add a comment	댓글 추가
+	Add a comment (@ to mention)	댓글 추가(@로 멘션)
 	Add a Table	표 추가
 	Add Object to Selection	선택 영역에 개체 추가
 	Add Space Before Paragraph	단락 앞에 간격 추가
@@ -421,6 +422,7 @@
 	General	일반
 	Go To	이동
 	Go to	이동
+	Go to Comment	댓글로 이동
 	Go To (⌘⌥G)	이동(⌘⌥G)
 	Go To…	이동…
 	Grab bag	모음
@@ -968,6 +970,7 @@
 	Wrap\nText	텍스트 줄\n바꿈
 	Write & Insert Fields	필드 작성 및 삽입
 	Write a reply	답글 작성
+	Write a reply (@ to mention)	답글 작성(@로 멘션)
 	Zoom	확대/축소
 	Zoom In	확대
 	Zoom Out	축소

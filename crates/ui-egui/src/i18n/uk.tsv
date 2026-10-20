@@ -22,6 +22,7 @@
 	Accessibility	Доступність
 	Add	Додати
 	Add a comment	Додати коментар
+	Add a comment (@ to mention)	Додати коментар (@ для згадки)
 	Add a Table	Додати таблицю
 	Add Object to Selection	Додати об'єкт до виділення
 	Add Space Before Paragraph	Додати інтервал перед абзацом
@@ -440,6 +441,7 @@
 	General	Загальні
 	Go To	Перейти
 	Go to	Перейти
+	Go to Comment	Перейти до коментаря
 	Go To (⌘⌥G)	Перейти (⌘⌥G)
 	Go To…	Перейти…
 	Grab bag	Різне
@@ -990,6 +992,7 @@
 	Wrap\nText	Обтікання\nтекстом
 	Write & Insert Fields	Написання й вставлення полів
 	Write a reply	Напишіть відповідь
+	Write a reply (@ to mention)	Напишіть відповідь (@ для згадки)
 	Zoom	Масштаб
 	Zoom In	Збільшити масштаб
 	Zoom Out	Зменшити масштаб

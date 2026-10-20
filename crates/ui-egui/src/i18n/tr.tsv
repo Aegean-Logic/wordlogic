@@ -23,6 +23,7 @@
 	Accessibility	Erişilebilirlik
 	Add	Ekle
 	Add a comment	Yorum ekle
+	Add a comment (@ to mention)	Yorum ekle (anmak için @)
 	Add a Table	Tablo Ekle
 	Add Space Before Paragraph	Paragraf Öncesine Boşluk Ekle
 	Add Text	Metin Ekle
@@ -291,6 +292,7 @@
 	General	Genel
 	Go To	Git
 	Go to	Git
+	Go to Comment	Yoruma Git
 	Go To (⌘⌥G)	Git (⌘⌥G)
 	Grab bag	Çeşitli
 	Greeting Line	Selamlama Satırı
@@ -867,6 +869,7 @@ preview	Title	Örnek
 	That format doesn't keep everything, so the document is still open. Save it as a Word document (.docx) to go on.	Bu biçim her şeyi korumaz; bu yüzden belge açık kalır. Devam etmek için Word belgesi (.docx) olarak kaydedin.
 	Top Margin	Üst Kenar Boşluğu
 	Write a reply	Yanıt yazın
+	Write a reply (@ to mention)	Yanıt yazın (anmak için @)
 	Direction:	Yön:
 	Right-to-left	Sağdan sola
 	Left-to-right	Soldan sağa

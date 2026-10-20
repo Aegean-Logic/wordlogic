@@ -611,7 +611,8 @@ mod tests {
         assert_eq!(token("mail ann@example.com", 20), None);
         assert_eq!(token("@ ann", 5), None);
         assert_eq!(token("@ann\nx", 6), None);
-        assert_eq!(token("😀 @Bø", 5), Some((2, "Bø".into())));
+        // A four-byte character before the `@` (escaped: the source scan checks interface glyphs).
+        assert_eq!(token("\u{1F600} @Bø", 5), Some((2, "Bø".into())));
     }
 
     #[test]

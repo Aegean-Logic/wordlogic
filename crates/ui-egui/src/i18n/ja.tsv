@@ -11,6 +11,7 @@
 	Accessibility	アクセシビリティ
 	Add	追加
 	Add a comment	コメントを追加
+	Add a comment (@ to mention)	コメントを追加 (@ でメンション)
 	Add a Table	表を追加
 	Add Object to Selection	オブジェクトを選択範囲に追加
 	Add Space Before Paragraph	段落前に間隔を追加
@@ -429,6 +430,7 @@
 	General	全般
 	Go To	ジャンプ
 	Go to	移動
+	Go to Comment	コメントへ移動
 	Go To (⌘⌥G)	ジャンプ (⌘⌥G)
 	Grab bag	ランダム表示
 	Greeting Line	あいさつ文
@@ -962,6 +964,7 @@
 	Wrap\nText	文字列の折り返し
 	Write & Insert Fields	文章入力とフィールドの挿入
 	Write a reply	返信を入力
+	Write a reply (@ to mention)	返信を入力 (@ でメンション)
 	Zoom	ズーム
 	Zoom In	拡大
 	Zoom Out	縮小
