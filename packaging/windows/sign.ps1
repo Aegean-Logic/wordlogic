@@ -35,8 +35,27 @@ function Find-SignTool {
   $found = Get-ChildItem -Path $kits -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
     Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } |
     Sort-Object FullName -Descending | Select-Object -First 1
-  if (-not $found) { throw 'signtool.exe not found (install the Windows SDK)' }
+  if ($found) { return $found.FullName }
+  return $null
+}
+
+# Azure's signing dlib needs signtool 10.0.22621.755 or later: older ones ignore /dlib and pick a
+# certificate from the local store instead. Fetches Microsoft's current signtool from NuGet.
+function Get-CurrentSignTool([string] $Dir) {
+  $pkg = Join-Path $Dir 'sdk-buildtools.zip'
+  Invoke-WebRequest -Uri 'https://www.nuget.org/api/v2/package/Microsoft.Windows.SDK.BuildTools' -OutFile $pkg
+  Expand-Archive -Path $pkg -DestinationPath (Join-Path $Dir 'sdk-buildtools') -Force
+  $found = Get-ChildItem -Path (Join-Path $Dir 'sdk-buildtools') -Recurse -Filter signtool.exe |
+    Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } |
+    Sort-Object FullName -Descending | Select-Object -First 1
+  if (-not $found) { throw 'signtool.exe not found in Microsoft.Windows.SDK.BuildTools' }
   return $found.FullName
+}
+
+function Test-SignToolSupportsDlib([string] $Path) {
+  $version = $null
+  if (-not [version]::TryParse((Get-Item $Path).VersionInfo.ProductVersion, [ref] $version)) { return $false }
+  return $version -ge [version]'10.0.22621.755'
 }
 
 function Invoke-SignTool([string[]] $Arguments) {
@@ -61,6 +80,7 @@ New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 
 try {
   if ($haveCert) {
+    if (-not $script:SignTool) { throw 'signtool.exe not found (install the Windows SDK)' }
     Write-Output "Signing with WINDOWS_CERTIFICATE: $($Files -join ', ')"
     $pfx = Join-Path $tmp 'cert.pfx'
     [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
@@ -70,6 +90,10 @@ try {
     Invoke-SignTool ($signArgs + $Files)
   }
   else {
+    if (-not $env:SIGNTOOL -and -not ($script:SignTool -and (Test-SignToolSupportsDlib $script:SignTool))) {
+      Write-Output "Installed signtool is missing or too old for Azure signing: fetching Microsoft.Windows.SDK.BuildTools"
+      $script:SignTool = Get-CurrentSignTool $tmp
+    }
     Write-Output "Signing with Azure Trusted Signing ($env:AZURE_SIGNING_ACCOUNT / $env:AZURE_CERT_PROFILE): $($Files -join ', ')"
     # The dlib authenticates with DefaultAzureCredential, which reads AZURE_TENANT_ID,
     # AZURE_CLIENT_ID and AZURE_CLIENT_SECRET from the environment.
